@@ -92,7 +92,7 @@ def main():
     ip_address = input(f'enter the server ip address: ')
 
     sock = socket.socket()
-    sock.connect((ip_address if ip_address else '127.0.0.1', 50002))
+    sock.connect((ip_address if ip_address else '127.0.0.1', 50001))
 
     while True:
         message = input('<< ')
