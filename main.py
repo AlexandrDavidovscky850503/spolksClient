@@ -39,21 +39,6 @@ def upload_file(connection, file_name):
     progress.close()
 
     print('All')
-    # with open(file_name, "rb") as f:
-    #     while True:
-    #         print('Iteration')
-    #         # read the bytes from the file
-    #         bytes_read = f.read(BUFFER_SIZE)
-    #         print(bytes_read)
-    #         if not bytes_read:
-    #             print('Break')
-    #             # file transmitting is done
-    #             break
-    #         # we use sendall to assure transimission in
-    #         # busy networks
-    #         connection.send(bytes_read)
-    #         # update the progress bar
-    #         progress.update(len(bytes_read))
     f.close()
 
 def download_file(sock, file_name):
@@ -63,11 +48,13 @@ def download_file(sock, file_name):
     file, filesize = received.split(SEPARATOR)
     # remove absolute path if there is
     file = os.path.basename(file)
+    print(file)
     # convert to integer
     filesize = int(filesize)
     # start receiving the file from the socket
     # and writing to the file stream
     progress = tqdm.tqdm(range(filesize), f"Receiving {file}", unit="B", unit_scale=True, unit_divisor=1024)
+    total_read = 0
     with open(file, "wb") as f:
         while True:
             # read 1024 bytes from the socket (receive)
@@ -80,6 +67,11 @@ def download_file(sock, file_name):
             f.write(bytes_read)
             # update the progress bar
             progress.update(len(bytes_read))
+            total_read += len(bytes_read)
+            if total_read == filesize:
+                progress.close()
+                print('All')
+                break
     f.close()
 
 
@@ -92,7 +84,7 @@ def main():
     ip_address = input(f'enter the server ip address: ')
 
     sock = socket.socket()
-    sock.connect((ip_address if ip_address else '127.0.0.1', 50001))
+    sock.connect((ip_address if ip_address else '127.0.0.1', 50012))
 
     while True:
         message = input('<< ')
@@ -125,7 +117,7 @@ def main():
             sock.send(bytes(message, encoding='utf-8'))
             sock.settimeout(10)
             download_file(sock, file_name)
-            sock.close()
+            # sock.close()
         elif command == 'kill':
             sock.close()
             return
