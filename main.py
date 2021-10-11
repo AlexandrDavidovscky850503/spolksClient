@@ -14,20 +14,46 @@ def speed(buf, t0, t1):
 def upload_file(connection, file_name):
     print('Upload to server')
     filesize = os.path.getsize(file_name)
+    print('Size: ', filesize)
     connection.send(f"{file_name}{SEPARATOR}{filesize}".encode())
+    connection.recv(10)
     progress = tqdm.tqdm(range(filesize), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
-    with open(file_name, "rb") as f:
-        while True:
-            # read the bytes from the file
-            bytes_read = f.read(BUFFER_SIZE)
-            if not bytes_read:
-                # file transmitting is done
-                break
-            # we use sendall to assure transimission in
-            # busy networks
-            connection.sendall(bytes_read)
+
+    f = open(file_name, "rb")
+    bytes_read = f.read()
+    # print(bytes_read)
+    while len(bytes_read) >= 256:
+        part = bytes_read[:256]
+        # print(len(part))
+        bytes_read = bytes_read[256:]
+        connection.send(part)
             # update the progress bar
-            progress.update(len(bytes_read))
+        progress.update(len(part))
+    # progress.close()
+
+
+    if (len(bytes_read)) > 0:
+        connection.send(bytes_read)
+            # update the progress bar
+        progress.update(len(bytes_read))
+    progress.close()
+
+    print('All')
+    # with open(file_name, "rb") as f:
+    #     while True:
+    #         print('Iteration')
+    #         # read the bytes from the file
+    #         bytes_read = f.read(BUFFER_SIZE)
+    #         print(bytes_read)
+    #         if not bytes_read:
+    #             print('Break')
+    #             # file transmitting is done
+    #             break
+    #         # we use sendall to assure transimission in
+    #         # busy networks
+    #         connection.send(bytes_read)
+    #         # update the progress bar
+    #         progress.update(len(bytes_read))
     f.close()
 
 def download_file(sock, file_name):
@@ -65,10 +91,10 @@ def main():
 
     ip_address = input(f'enter the server ip address: ')
 
-    while True:
-        sock = socket.socket()
-        sock.connect((ip_address if ip_address else '127.0.0.1', 50001))
+    sock = socket.socket()
+    sock.connect((ip_address if ip_address else '127.0.0.1', 50002))
 
+    while True:
         message = input('<< ')
 
         if not message:
@@ -100,8 +126,11 @@ def main():
             sock.settimeout(10)
             download_file(sock, file_name)
             sock.close()
+        elif command == 'kill':
+            sock.close()
+            return
         else:
-            sock.send(bytes(message, encoding='utf-8'))
+            sock.send(message.encode(encoding='utf-8'))
             try:
                 data = sock.recv(1024)
             except ConnectionAbortedError as e:
@@ -109,10 +138,6 @@ def main():
                 return
             finally:
                 print(f'>> {data.decode(encoding="utf-8")}')
-
-        if command == 'kill':
-            sock.close()
-            return
 
 
 if __name__ == '__main__':
