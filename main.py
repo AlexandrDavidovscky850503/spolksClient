@@ -1,3 +1,4 @@
+# from _typeshed import Self
 import os
 import socket
 import time
@@ -5,7 +6,9 @@ import argparse
 import tqdm
 
 SEPARATOR = "<SEPARATOR>"
-BUFFER_SIZE = 1024 * 8 #8KB
+BUFFER_SIZE = 1024 * 32 #8KB
+IP_ADDRESS = '127.0.0.1'
+SOCKET_PORT = 50012
 
 def speed(buf, t0, t1):
     return round(len(buf) / (t1 - t0) / 1024 ** 2, 2)
@@ -14,20 +17,31 @@ def speed(buf, t0, t1):
 def upload_file(connection, file_name):
     print('Upload to server')
     filesize = os.path.getsize(file_name)
+    print('Size: ', filesize)
     connection.send(f"{file_name}{SEPARATOR}{filesize}".encode())
+    connection.recv(10)
     progress = tqdm.tqdm(range(filesize), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
-    with open(file_name, "rb") as f:
-        while True:
-            # read the bytes from the file
-            bytes_read = f.read(BUFFER_SIZE)
-            if not bytes_read:
-                # file transmitting is done
-                break
-            # we use sendall to assure transimission in
-            # busy networks
-            connection.sendall(bytes_read)
+
+    f = open(file_name, "rb")
+    bytes_read = f.read()
+    # print(bytes_read)
+    while len(bytes_read) >= 256:
+        part = bytes_read[:256]
+        # print(len(part))
+        bytes_read = bytes_read[256:]
+        connection.send(part)
             # update the progress bar
-            progress.update(len(bytes_read))
+        progress.update(len(part))
+    # progress.close()
+
+
+    if (len(bytes_read)) > 0:
+        connection.send(bytes_read)
+            # update the progress bar
+        progress.update(len(bytes_read))
+    progress.close()
+
+    print('All')
     f.close()
 
 def download_file(sock, file_name):
@@ -37,23 +51,73 @@ def download_file(sock, file_name):
     file, filesize = received.split(SEPARATOR)
     # remove absolute path if there is
     file = os.path.basename(file)
+    print(file)
     # convert to integer
     filesize = int(filesize)
     # start receiving the file from the socket
     # and writing to the file stream
     progress = tqdm.tqdm(range(filesize), f"Receiving {file}", unit="B", unit_scale=True, unit_divisor=1024)
+    total_read = 0
+    if filesize >= BUFFER_SIZE:
+        amount_to_read = BUFFER_SIZE
+    else:
+        amount_to_read = filesize
     with open(file, "wb") as f:
         while True:
+
             # read 1024 bytes from the socket (receive)
-            bytes_read = sock.recv(BUFFER_SIZE)
-            if not bytes_read:
-                # nothing is received
-                # file transmitting is done
-                break
+
+            while 1:
+                cont = 'y'
+                bytes_read = sock.recv(amount_to_read)
+                # print(amount_to_read)
+                # print(len(bytes_read))
+                if len(bytes_read) < amount_to_read:
+                    amount_to_read -= len(bytes_read)
+                    print('Connection lost')
+                    while 1:
+                        try:
+                            sock.settimeout(30)
+                            sock.connect((IP_ADDRESS if IP_ADDRESS else '127.0.0.1', SOCKET_PORT))
+                            sock.settimeout(None)
+                            break
+                        except Exception as e:
+                            print('Cannot connect to server.')
+                            while 1:
+                                cont = input('Try again (y/n)?')
+                                sock.settimeout(None)
+                                if cont == 'y' or cont == 'n':
+                                    break
+                                print('Check your input')
+                            if cont == 'n':
+                                break
+
+                if cont == 'n':
+                    break
+                else:
+                    break
+
+
+
+            # if not bytes_read:
+            #     # nothing is received
+            #     # file transmitting is done
+            #     break
+
+
             # write to the file the bytes we just received
             f.write(bytes_read)
             # update the progress bar
             progress.update(len(bytes_read))
+            total_read += len(bytes_read)
+            if filesize - total_read >= BUFFER_SIZE:
+                amount_to_read = BUFFER_SIZE
+            else:
+                amount_to_read = filesize - total_read
+            if total_read == filesize:
+                progress.close()
+                print('All')
+                break
     f.close()
 
 
@@ -64,11 +128,12 @@ def main():
     print('-' * 64)
 
     ip_address = input(f'enter the server ip address: ')
+    IP_ADDRESS = ip_address if ip_address else '127.0.0.1'
+
+    sock = socket.socket()
+    sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
 
     while True:
-        sock = socket.socket()
-        sock.connect((ip_address if ip_address else '127.0.0.1', 50001))
-
         message = input('<< ')
 
         if not message:
@@ -99,9 +164,12 @@ def main():
             sock.send(bytes(message, encoding='utf-8'))
             sock.settimeout(10)
             download_file(sock, file_name)
+            # sock.close()
+        elif command == 'kill':
             sock.close()
+            return
         else:
-            sock.send(bytes(message, encoding='utf-8'))
+            sock.send(message.encode(encoding='utf-8'))
             try:
                 data = sock.recv(1024)
             except ConnectionAbortedError as e:
@@ -109,10 +177,6 @@ def main():
                 return
             finally:
                 print(f'>> {data.decode(encoding="utf-8")}')
-
-        if command == 'kill':
-            sock.close()
-            return
 
 
 if __name__ == '__main__':
