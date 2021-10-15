@@ -8,7 +8,7 @@ import tqdm
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 1024 * 32 #8KB
 IP_ADDRESS = '127.0.0.1'
-SOCKET_PORT = 50012
+SOCKET_PORT = 50015
 
 def speed(buf, t0, t1):
     return round(len(buf) / (t1 - t0) / 1024 ** 2, 2)
@@ -25,10 +25,10 @@ def upload_file(connection, file_name):
     f = open(file_name, "rb")
     bytes_read = f.read()
     # print(bytes_read)
-    while len(bytes_read) >= 256:
-        part = bytes_read[:256]
+    while len(bytes_read) >= BUFFER_SIZE:
+        part = bytes_read[:BUFFER_SIZE]
         # print(len(part))
-        bytes_read = bytes_read[256:]
+        bytes_read = bytes_read[BUFFER_SIZE:]
         connection.send(part)
             # update the progress bar
         progress.update(len(part))
@@ -44,11 +44,28 @@ def upload_file(connection, file_name):
     print('All')
     f.close()
 
+def recvall(sock, amount_to_read):
+    n = 0
+    data = bytearray()
+    while n < amount_to_read:
+        b = sock.recv(amount_to_read)
+        if not b:
+            return None
+        n += len(b)
+        data.extend(b)
+
+    return data
+
+
+
 def download_file(sock, file_name):
     # receive the file infos
     # receive using client socket, not server socket
     received = sock.recv(BUFFER_SIZE).decode()
     file, filesize = received.split(SEPARATOR)
+    if filesize == '-':
+        print('File does not exist')
+        return
     # remove absolute path if there is
     file = os.path.basename(file)
     print(file)
@@ -69,9 +86,10 @@ def download_file(sock, file_name):
 
             while 1:
                 cont = 'y'
-                bytes_read = sock.recv(amount_to_read)
-                # print(amount_to_read)
-                # print(len(bytes_read))
+                # bytes_read = sock.recv(amount_to_read, socket.MSG_WAITALL)
+                bytes_read = recvall(sock, amount_to_read)
+                print(amount_to_read)
+                print(len(bytes_read))
                 if len(bytes_read) < amount_to_read:
                     amount_to_read -= len(bytes_read)
                     print('Connection lost')
@@ -97,6 +115,7 @@ def download_file(sock, file_name):
                 else:
                     break
 
+            print('Good!')
 
 
             # if not bytes_read:
@@ -147,10 +166,13 @@ def main():
         if command == 'upload':
             file_name = params[0]
 
-            message = f'{command} {params[0].split(os.path.sep)[-1]}'
-            sock.send(bytes(message, encoding='utf-8'))
+            if not os.path.isfile(file_name):
+                print('File does not exist')
+            else:
+                message = f'{command} {params[0].split(os.path.sep)[-1]}'
+                sock.send(bytes(message, encoding='utf-8'))
 
-            upload_file(sock, file_name)
+                upload_file(sock, file_name)
             # sock.close()
         elif command == 'download':
             file = params[0]
