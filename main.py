@@ -63,7 +63,32 @@ def download_file(sock, file_name, ip):
     IP_ADDRESS = ip
     # receive the file infos
     # receive using client socket, not server socket
+    # try:
     received = sock.recv(BUFFER_SIZE).decode()
+    # except Exception:
+    #     print('Cannot start download')
+    #     sock.close()
+    #     while 1:
+    #         sock = socket.socket()
+    #         try:
+    #             sock.settimeout(30)
+    #             sock.connect((IP_ADDRESS if IP_ADDRESS else '127.0.0.1', SOCKET_PORT))
+    #             sock.settimeout(10)
+    #         except Exception:
+    #             print('Cannot connect to server.')
+    #                 while 1:
+    #                     cont = input('Try again (y/n)?')
+    #                     # sock.settimeout(None)
+    #                     if cont == 'y' or cont == 'n':
+    #                         break
+    #                     print('Check your input')
+    #                 print('a')
+    #                 if cont == 'n':
+    #                     return sock
+    #         return sock
+
+
+
     file, filesize = received.split(SEPARATOR)
     if filesize == '-':
         print('File does not exist')
@@ -83,6 +108,7 @@ def download_file(sock, file_name, ip):
         amount_to_read = filesize
     with open(file, "wb") as f:
         while True:
+            # print('a',sock.fileno())
 
             # read 1024 bytes from the socket (receive)
 
@@ -94,6 +120,7 @@ def download_file(sock, file_name, ip):
                     # print(amount_to_read)
                     # print(len(bytes_read))
                 except Exception:
+                    # print('b',sock.fileno())
                 
                 # if len(bytes_read) < amount_to_read:
                     amount_to_read -= len(bytes_read)
@@ -102,17 +129,19 @@ def download_file(sock, file_name, ip):
                     while 1:
                         print('b')
                         try:
-                            print('Rtying to connect...')
-                            print(IP_ADDRESS)
-                            # sock.settimeout(30)
+                            print('Retrying to connect...')
+                            print(IP_ADDRESS)                           
                             sock = socket.socket()
+                            sock.settimeout(30)
+                            # print('e',sock.fileno())
                             sock.connect((IP_ADDRESS if IP_ADDRESS else '127.0.0.1', SOCKET_PORT))
+                            print('connected')
                             comm = 'cont'
                             total_r = str(total_read + len(bytes_read))
                             # sock.send(b'cont')
                             msg = f'{comm} {total_r}'
                             sock.send(bytes(msg, encoding='utf-8'))
-                            # sock.settimeout(None)
+                            sock.settimeout(10)
                             break
                         except Exception as e:
                             print('Cannot connect to server.')
@@ -124,7 +153,7 @@ def download_file(sock, file_name, ip):
                                 print('Check your input')
                             print('a')
                             if cont == 'n':
-                                return
+                                return sock
 
                 if cont == 'n':
                     break
