@@ -177,7 +177,6 @@ def main():
             continue
 
         command, *params = message.split(' ')
-        print(len(params))
         if command != 'upload' and command != 'download' and  command != 'echo' and command != 'ping' and  command != 'pong' and command != 'kill' and command != 'help' and command != 'time':
             print('Unknowm command. Please, try again')
             continue
@@ -213,11 +212,11 @@ def main():
             sock.close()
             return
         elif command == 'echo':
-            print(params[0])
+            # print(params[0])
             if (not params):
                 print('Invalid arguments. Please try again')
                 continue
-            if (params[0] == ' '):
+            if (len(params[0]) == 0):
                 print('Invalid arguments. Please try again')
                 continue
             sock.send(message.encode(encoding='utf-8'))
