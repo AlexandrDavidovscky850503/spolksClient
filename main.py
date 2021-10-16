@@ -50,6 +50,7 @@ def recvall(sock, amount_to_read):
     while n < amount_to_read:
         b = sock.recv(amount_to_read)
         if not b:
+            print('error')
             return None
         n += len(b)
         data.extend(b)
@@ -58,7 +59,9 @@ def recvall(sock, amount_to_read):
 
 
 
-def download_file(sock, file_name):
+def download_file(sock, file_name, ip):
+    # print(IP_ADDRESS)
+    IP_ADDRESS = ip
     # receive the file infos
     # receive using client socket, not server socket
     received = sock.recv(BUFFER_SIZE).decode()
@@ -87,35 +90,49 @@ def download_file(sock, file_name):
             while 1:
                 cont = 'y'
                 # bytes_read = sock.recv(amount_to_read, socket.MSG_WAITALL)
-                bytes_read = recvall(sock, amount_to_read)
-                print(amount_to_read)
-                print(len(bytes_read))
-                if len(bytes_read) < amount_to_read:
+                try:
+                    bytes_read = recvall(sock, amount_to_read)
+                    # print(amount_to_read)
+                    # print(len(bytes_read))
+                except Exception:
+                
+                # if len(bytes_read) < amount_to_read:
                     amount_to_read -= len(bytes_read)
                     print('Connection lost')
+                    sock.close()
                     while 1:
+                        print('b')
                         try:
-                            sock.settimeout(30)
+                            print('Rtying to connect...')
+                            print(IP_ADDRESS)
+                            # sock.settimeout(30)
+                            sock = socket.socket()
                             sock.connect((IP_ADDRESS if IP_ADDRESS else '127.0.0.1', SOCKET_PORT))
-                            sock.settimeout(None)
+                            comm = 'cont'
+                            total_r = str(total_read + len(bytes_read))
+                            # sock.send(b'cont')
+                            msg = f'{comm} {total_r}'
+                            sock.send(bytes(msg, encoding='utf-8'))
+                            # sock.settimeout(None)
                             break
                         except Exception as e:
                             print('Cannot connect to server.')
                             while 1:
                                 cont = input('Try again (y/n)?')
-                                sock.settimeout(None)
+                                # sock.settimeout(None)
                                 if cont == 'y' or cont == 'n':
                                     break
                                 print('Check your input')
+                            print('a')
                             if cont == 'n':
-                                break
+                                return
 
                 if cont == 'n':
                     break
                 else:
                     break
 
-            print('Good!')
+            # print('Good!')
 
 
             # if not bytes_read:
@@ -151,6 +168,7 @@ def main():
 
     sock = socket.socket()
     sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+    print(IP_ADDRESS)
 
     while True:
         message = input('<< ')
@@ -159,6 +177,10 @@ def main():
             continue
 
         command, *params = message.split(' ')
+        print(len(params))
+        if command != 'upload' and command != 'download' and  command != 'echo' and command != 'ping' and  command != 'pong' and command != 'kill' and command != 'help' and command != 'time':
+            print('Unknowm command. Please, try again')
+            continue
 
         if message == 'q':
             sock.close()
@@ -185,11 +207,27 @@ def main():
             message = f'{command} {file}'
             sock.send(bytes(message, encoding='utf-8'))
             sock.settimeout(10)
-            download_file(sock, file_name)
+            download_file(sock, file_name, IP_ADDRESS)
             # sock.close()
         elif command == 'kill':
             sock.close()
             return
+        elif command == 'echo':
+            print(params[0])
+            if (not params):
+                print('Invalid arguments. Please try again')
+                continue
+            if (params[0] == ' '):
+                print('Invalid arguments. Please try again')
+                continue
+            sock.send(message.encode(encoding='utf-8'))
+            try:
+                data = sock.recv(1024)
+            except ConnectionAbortedError as e:
+                print(f'connection with server lost: {e}')
+                return
+            finally:
+                print(f'>> {data.decode(encoding="utf-8")}')
         else:
             sock.send(message.encode(encoding='utf-8'))
             try:
