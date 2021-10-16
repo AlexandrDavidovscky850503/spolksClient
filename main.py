@@ -1,4 +1,3 @@
-# from _typeshed import Self
 import os
 import socket
 import time
@@ -146,15 +145,22 @@ def download_file(sock, file_name, ip):
             # update the progress bar
             progress.update(len(bytes_read))
             total_read += len(bytes_read)
+            # print('d',sock.fileno())
             if filesize - total_read >= BUFFER_SIZE:
                 amount_to_read = BUFFER_SIZE
             else:
                 amount_to_read = filesize - total_read
             if total_read == filesize:
                 progress.close()
+                # print('c',sock.fileno())
                 print('All')
                 break
-    f.close()
+        # print('e',sock.fileno())
+        f.close()
+        # print('f',sock.fileno())
+
+    return sock
+
 
 
 
@@ -171,6 +177,7 @@ def main():
     print(IP_ADDRESS)
 
     while True:
+        # print('a',sock.fileno())
         message = input('<< ')
 
         if not message:
@@ -206,7 +213,8 @@ def main():
             message = f'{command} {file}'
             sock.send(bytes(message, encoding='utf-8'))
             sock.settimeout(10)
-            download_file(sock, file_name, IP_ADDRESS)
+            sock = download_file(sock, file_name, IP_ADDRESS)
+            # print('b',sock.fileno())
             # sock.close()
         elif command == 'kill':
             sock.close()
