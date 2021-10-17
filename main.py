@@ -289,7 +289,7 @@ def main():
                 message = f'{command} {params[0].split(os.path.sep)[-1]}'
                 sock.send(bytes(message, encoding='utf-8'))
                 sock.settimeout(10)
-                upload_file(sock, file_name, IP_ADDRESS)
+                sock = upload_file(sock, file_name, IP_ADDRESS)
             # sock.close()
         elif command == 'download':
             file = params[0]
