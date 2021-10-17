@@ -13,8 +13,9 @@ def speed(buf, t0, t1):
     return round(len(buf) / (t1 - t0) / 1024 ** 2, 2)
 
 
-def upload_file(connection, file_name):
+def upload_file(connection, file_name, ip):
     print('Upload to server')
+    IP_ADDRESS = ip
     filesize = os.path.getsize(file_name)
     print('Size: ', filesize)
     connection.send(f"{file_name}{SEPARATOR}{filesize}".encode())
@@ -23,9 +24,11 @@ def upload_file(connection, file_name):
 
     f = open(file_name, "rb")
     bytes_read = f.read()
+    bytes_read_all = bytes(bytes_read)
     # print(bytes_read)
     amount_to_read = BUFFER_SIZE
     total_send = 0
+    total_send2 = 0
     while total_send < filesize:
         if filesize - total_send >= BUFFER_SIZE:
             amount_to_read = BUFFER_SIZE
@@ -36,9 +39,11 @@ def upload_file(connection, file_name):
         bytes_read = bytes_read[amount_to_read:]
         while 1:
             try:
-                connection.send(part)
+                aaaa = connection.send(part)
+                # print('aaaa', aaaa)
                 progress.update(len(part))
                 total_send += len(part)
+                total_send2 += aaaa
                 break
             except Exception:
                 print('Connection lost')
@@ -49,24 +54,30 @@ def upload_file(connection, file_name):
                         print('Retrying to connect...')
                         print(IP_ADDRESS)                           
                         connection = socket.socket()
+                        print('Conn', total_send)
+                        print('Conn2', total_send2)
                         connection.settimeout(30)
                         # print('e',sock.fileno())
                         connection.connect((IP_ADDRESS if IP_ADDRESS else '127.0.0.1', SOCKET_PORT))
                         print('connected')
+                        
                         comm = 'cont'
                         total_r = '0'
                         # total_r = str(total_read + len(bytes_read))
                         # sock.send(b'cont')
                         msg = f'{comm} {total_r}'
+                        print('l')
                         connection.send(bytes(msg, encoding='utf-8'))
-
+                        print('n')
                         # pos = connection.recv(100)
 
-
                         connection.settimeout(10)
-
-
-
+                        print('m')
+                        pos = int(connection.recv(10))
+                        print('pos:', pos)
+                        bytes_read = bytes(bytes_read_all[pos:])
+                        part = bytes_read[:amount_to_read]
+                        print('h')
                         break
                     except Exception as e:
                         print('Cannot connect to server.')
@@ -88,7 +99,7 @@ def upload_file(connection, file_name):
             # update the progress bar
         # progress.update(len(bytes_read))
     progress.close()
-
+    print(total_send)
     print('All')
     f.close()
     return connection
@@ -278,7 +289,7 @@ def main():
                 message = f'{command} {params[0].split(os.path.sep)[-1]}'
                 sock.send(bytes(message, encoding='utf-8'))
                 sock.settimeout(10)
-                upload_file(sock, file_name)
+                upload_file(sock, file_name, IP_ADDRESS)
             # sock.close()
         elif command == 'download':
             file = params[0]
