@@ -1,6 +1,7 @@
 import os
 import socket
 import tqdm
+import regex
 
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 1024 * 32 #8KB
@@ -79,7 +80,7 @@ def upload_file(connection, file_name, ip, message):
                                 connection.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
                                 break
                             except:
-                                print('a')
+                                # print('a')
                                 if i == 29:
                                     raise Exception
 
@@ -190,7 +191,7 @@ def download_file(sock, file_name, ip, message):
                                     sock.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
                                     break
                                 except:
-                                    print('a')
+                                    # print('a')
                                     if i == 29:
                                         raise Exception
                                 
@@ -235,8 +236,18 @@ def download_file(sock, file_name, ip, message):
 def main():
     print('TCP Client!')
     # print('-' * 64)
-    ip_address = input(f'enter the server ip address: ')
-    ip_address = ip_address if ip_address else '127.0.0.1'
+    # ip_address = input(f'enter the server ip address: ')
+    
+    # ip_address = ip_address if ip_address else '127.0.0.1'
+    # ip_address = regex.match("[\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5]", ip_address)
+
+    while 1:
+        ip_address = input(f'enter the server ip address: ')
+        res = regex.match("^([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])$", ip_address)
+        if res != None:
+            break
+        print('Check your input')
+
     sock = socket.socket()
     sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
     # print(ip_address)
