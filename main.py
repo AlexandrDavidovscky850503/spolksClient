@@ -11,7 +11,7 @@ def speed(buf, t0, t1):
     return round(len(buf) / (t1 - t0) / 1024 ** 2, 2)
 
 
-def upload_file(connection, file_name, ip, message):
+def upload_file(connection, file_name, ip, message, p):
     print('Upload to server')
     filesize = os.path.getsize(file_name)
     print('Size: ', filesize)
@@ -44,8 +44,10 @@ def upload_file(connection, file_name, ip, message):
         return connection
     progress = tqdm.tqdm(range(filesize), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
     f = open(file_name, "rb")
-    bytes_read = f.read()
-    bytes_read_all = bytes(bytes_read)
+    # print(str(f.read(5)))
+    # bytes_read = f.read()
+    # bytes_read_all = bytes(bytes_read)
+    
     amount_to_read = BUFFER_SIZE
     total_send = 0
     while total_send < filesize:
@@ -54,8 +56,9 @@ def upload_file(connection, file_name, ip, message):
         else:
             amount_to_read = filesize - total_send
             print(amount_to_read)
-        part = bytes_read[:amount_to_read]
-        bytes_read = bytes_read[amount_to_read:]
+        part = f.read(amount_to_read)
+        # part = bytes_read[:amount_to_read]
+        # bytes_read = bytes_read[amount_to_read:]
         while 1:
             try:
                 connection.send(part)
@@ -66,7 +69,7 @@ def upload_file(connection, file_name, ip, message):
             except Exception:
                 print('Connection lost')
                 connection.close()
-                connection = socket.socket()
+                # connection = socket.socket()
                 while 1:
                     try:
                         print('Retrying to connect...')
@@ -75,6 +78,9 @@ def upload_file(connection, file_name, ip, message):
 
                         for i in range(30):
                             connection = socket.socket()
+                            # connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            # connection.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                            # connection.bind('192.168.1.1', p)
                             connection.settimeout(1.0)
                             try:
                                 connection.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
@@ -84,7 +90,7 @@ def upload_file(connection, file_name, ip, message):
                                 if i == 29:
                                     raise Exception
 
-                        connection.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
+                        # connection.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
                         # connection.settimeout(None)
                         print('connected')                        
                         comm = 'cont'
@@ -94,9 +100,11 @@ def upload_file(connection, file_name, ip, message):
                         connection.send(bytes(msg, encoding='utf-8'))
                         
                         pos = int(connection.recv(10))
-                        bytes_read = bytes(bytes_read_all[pos:])
-                        part = bytes_read[:amount_to_read]
-                        bytes_read = bytes_read[amount_to_read:]
+                        f.seek(pos)
+                        part = f.read(amount_to_read)
+                        # bytes_read = bytes(bytes_read_all[pos:])
+                        # part = bytes_read[:amount_to_read]
+                        # bytes_read = bytes_read[amount_to_read:]
                         break
                     except Exception as e:
                         print('Cannot connect to server.')
@@ -193,9 +201,7 @@ def download_file(sock, file_name, ip, message):
                                 except:
                                     # print('a')
                                     if i == 29:
-                                        raise Exception
-                                
-
+                                        raise Exception                                
                             print('connected')
                             sock.settimeout(10.0)
                             comm = 'cont'
@@ -235,12 +241,6 @@ def download_file(sock, file_name, ip, message):
 
 def main():
     print('TCP Client!')
-    # print('-' * 64)
-    # ip_address = input(f'enter the server ip address: ')
-    
-    # ip_address = ip_address if ip_address else '127.0.0.1'
-    # ip_address = regex.match("[\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5]", ip_address)
-
     while 1:
         ip_address = input(f'enter the server ip address: ')
         res = regex.match("^([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])$", ip_address)
@@ -248,8 +248,11 @@ def main():
             break
         print('Check your input')
 
-    sock = socket.socket()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+    print(sock.getsockname()[1])
+    port = sock.getsockname()[1]
     # print(ip_address)
     while True:
         message = input('<< ')
@@ -269,7 +272,7 @@ def main():
             else:
                 message = f'{command} {params[0].split(os.path.sep)[-1]}'
                 
-                sock = upload_file(sock, file_name, ip_address, message)
+                sock = upload_file(sock, file_name, ip_address, message, port)
             # sock.close()
         elif command == 'download':
             file = params[0]
