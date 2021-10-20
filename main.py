@@ -21,27 +21,7 @@ def upload_file(connection, file_name, ip, message, c_id):
     except Exception:
         print('Cannot get file information')
         connection.close()
-        while 1:
-            try:
-                print('Retrying to connect to', ip)                        
-                connection = socket.socket()
-                connection.settimeout(30.0)
-                connection.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
-                print('connected')
-                connection.settimeout(10.0)
-                iii = f'{str(c_id)}' 
-                connection.send(bytes(iii, encoding='utf-8'))
-                connection.recv(10)
-                break
-            except Exception:
-                print('Cannot connect to server.')
-                while 1:
-                    cont = input('Try again (y/n)?')
-                    if cont == 'y' or cont == 'n':
-                        break
-                    print('Check your input')
-                if cont == 'n':
-                    exit(0)
+        connection = reconnect(connection, ip, SOCKET_PORT, c_id)
         return connection
     progress = tqdm.tqdm(range(filesize), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
     f = open(file_name, "rb")  
@@ -134,27 +114,7 @@ def download_file(sock, file_name, ip, message, c_id):
     except Exception:
         print('Cannot get file information')
         sock.close()
-        while 1:
-            try:
-                print('Retrying to connect to', ip)                        
-                sock = socket.socket()
-                sock.settimeout(30.0)
-                sock.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
-                print('connected')
-                sock.settimeout(10.0)
-                iii = f'{str(c_id)}' 
-                sock.send(bytes(iii, encoding='utf-8'))
-                sock.recv(10)
-                break
-            except Exception:
-                print('Cannot connect to server.')
-                while 1:
-                    cont = input('Try again (y/n)?')
-                    if cont == 'y' or cont == 'n':
-                        break
-                    print('Check your input')
-                if cont == 'n':
-                    exit(0)
+        sock = reconnect(sock, ip, SOCKET_PORT, c_id)
         return sock
     file, filesize = received.split(SEPARATOR)
     if filesize == '-':
@@ -270,16 +230,11 @@ def main():
         if res != None:
             break
         print('Check your input')
-
     client_id = random.randint(0, 65535)
     print('ID:', client_id)
     iii = f'{str(client_id)}'
-
     sock = socket.socket()
-    # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.settimeout(10.0)
-    
     try:
         sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
         sock.send(bytes(iii, encoding='utf-8'))
@@ -287,8 +242,6 @@ def main():
     except Exception:
         sock.close()
         sock = reconnect(sock, ip_address, SOCKET_PORT, client_id)
-    # print(sock.getsockname()[1])
-    # port = sock.getsockname()[1]
     while True:
         message = input('<< ')
         if not message:
@@ -302,8 +255,7 @@ def main():
             if not os.path.isfile(file_name):
                 print('File does not exist')
             else:
-                message = f'{command} {params[0].split(os.path.sep)[-1]}'
-                
+                message = f'{command} {params[0].split(os.path.sep)[-1]}'              
                 sock = upload_file(sock, file_name, ip_address, message, client_id)
         elif command == 'download':
             file = params[0]
