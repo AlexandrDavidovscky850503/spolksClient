@@ -139,38 +139,7 @@ def download_file(sock, file_name, ip, message, c_id):
                     amount_to_read -= len(bytes_read)
                     print('Connection lost')
                     sock.close()
-                    while 1:
-                        try:
-                            print('Retrying to connect to', ip)                                                 
-                            for i in range(30):
-                                sock = socket.socket()
-                                sock.settimeout(1.0)
-                                try:
-                                    sock.connect((ip if ip else '127.0.0.1', SOCKET_PORT))
-                                    break
-                                except:
-                                    if i == 29:
-                                        raise Exception                                
-                            print('connected')
-                            sock.settimeout(10.0)
-                            iii = f'{str(c_id)}' 
-                            sock.send(bytes(iii, encoding='utf-8'))
-                            sock.recv(10)
-                            comm = 'cont'
-                            total_r = str(total_read + len(bytes_read))
-                            msg = f'{comm} {total_r}'
-                            sock.send(bytes(msg, encoding='utf-8'))
-                            sock.settimeout(10.0)
-                            break
-                        except Exception as e:
-                            print('Cannot connect to server.')
-                            while 1:
-                                cont = input('Try again (y/n)?')
-                                if cont == 'y' or cont == 'n':
-                                    break
-                                print('Check your input')
-                            if cont == 'n':
-                                exit(0)
+                    sock = download_reconnect(sock, ip, SOCKET_PORT, c_id, total_read, len(bytes_read))
                 if cont == 'n':
                     break
                 else:
@@ -187,6 +156,43 @@ def download_file(sock, file_name, ip, message, c_id):
                 print('All')
                 break
         f.close()
+    return sock
+
+
+def download_reconnect(sock, ip, port, c_id, t_read, l_bytes_read):
+    while 1:
+        try:
+            print('Retrying to connect to', ip)                                                 
+            for i in range(30):
+                sock = socket.socket()
+                sock.settimeout(1.0)
+                try:
+                    sock.connect((ip if ip else '127.0.0.1', port))
+                    break
+                except:
+                    if i == 29:
+                        raise Exception                                
+            print('connected')
+            sock.settimeout(10.0)
+            iii = f'{str(c_id)}' 
+            sock.send(bytes(iii, encoding='utf-8'))
+            sock.recv(10)
+            comm = 'cont'
+            total_r = str(t_read + l_bytes_read)
+            msg = f'{comm} {total_r}'
+            sock.send(bytes(msg, encoding='utf-8'))
+            sock.settimeout(10.0)
+            break
+        except Exception as e:
+            print('Cannot connect to server.')
+            while 1:
+                cont = input('Try again (y/n)?')
+                if cont == 'y' or cont == 'n':
+                    break
+                print('Check your input')
+            if cont == 'n':
+                exit(0)
+
     return sock
 
 
