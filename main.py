@@ -66,8 +66,7 @@ def upload_file(connection, file_name, ip, message, c_id):
                 connection.close()
                 while 1:
                     try:
-                        print('Retrying to connect...')
-                        print(ip)                           
+                        print('Retrying to connect to', ip)                        
                         for i in range(30):
                             connection = socket.socket()
                             # connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -182,8 +181,7 @@ def download_file(sock, file_name, ip, message, c_id):
                     sock.close()
                     while 1:
                         try:
-                            print('Retrying to connect to', ip)                     
-                            
+                            print('Retrying to connect to', ip)                                                 
                             for i in range(30):
                                 sock = socket.socket()
                                 sock.settimeout(1.0)
@@ -241,18 +239,42 @@ def main():
             break
         print('Check your input')
 
+    client_id = random.randint(0, 65535)
+    print('ID:', client_id)
+    iii = f'{str(client_id)}'
+
     sock = socket.socket()
     # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
     sock.settimeout(10.0)
-
-    client_id = random.randint(0, 65535)
-    print('ID:', client_id)
-    iii = f'{str(client_id)}'   
-    sock.send(bytes(iii, encoding='utf-8'))
-    sock.recv(10)
-
+    
+    try:
+        sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+        sock.send(bytes(iii, encoding='utf-8'))
+        sock.recv(10)
+    except Exception:
+        sock.close()
+        while 1:
+            try:
+                print('Retrying to connect to', ip_address)                        
+                sock = socket.socket()
+                sock.settimeout(30.0)
+                sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                print('connected')
+                sock.settimeout(10.0)
+                iii = f'{str(client_id)}' 
+                sock.send(bytes(iii, encoding='utf-8'))
+                sock.recv(10)
+                break
+            except Exception:
+                print('Cannot connect to server.')
+                while 1:
+                    cont = input('Try again (y/n)?')
+                    if cont == 'y' or cont == 'n':
+                        break
+                    print('Check your input')
+                if cont == 'n':
+                    exit(0)
     # print(sock.getsockname()[1])
     # port = sock.getsockname()[1]
     while True:
@@ -288,25 +310,66 @@ def main():
                 continue
             if (len(params[0]) == 0):
                 print('Invalid arguments. Please try again')
-                continue
-            sock.send(message.encode(encoding='utf-8'))
+                continue           
             try:
+                sock.send(message.encode(encoding='utf-8'))
                 data = sock.recv(1024)
-            except ConnectionAbortedError as e:
-                print(f'connection with server lost: {e}')
-                return
-            finally:
                 print(f'>> {data.decode(encoding="utf-8")}')
+            # except ConnectionAbortedError as e:
+            #     print(f'connection with server lost: {e}')
+            #     return
+            except Exception:
+                sock.close()
+                while 1:
+                    try:
+                        print('Retrying to connect to', ip_address)                        
+                        sock = socket.socket()
+                        sock.settimeout(30.0)
+                        sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                        print('connected')
+                        sock.settimeout(10.0)
+                        iii = f'{str(client_id)}' 
+                        sock.send(bytes(iii, encoding='utf-8'))
+                        sock.recv(10)
+                        break
+                    except Exception:
+                        print('Cannot connect to server.')
+                        while 1:
+                            cont = input('Try again (y/n)?')
+                            if cont == 'y' or cont == 'n':
+                                break
+                            print('Check your input')
+                        if cont == 'n':
+                            exit(0)
         else:
-            sock.send(message.encode(encoding='utf-8'))
             try:
+                sock.send(message.encode(encoding='utf-8'))            
                 data = sock.recv(1024)
-            except ConnectionAbortedError as e:
-                print(f'connection with server lost: {e}')
-                return
-            finally:
                 print(f'>> {data.decode(encoding="utf-8")}')
-
+            except Exception:
+                sock.close()
+                while 1:
+                    try:
+                        print('Retrying to connect to', ip_address)                        
+                        sock = socket.socket()
+                        sock.settimeout(30.0)
+                        sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                        print('connected')
+                        sock.settimeout(10.0)
+                        iii = f'{str(client_id)}' 
+                        sock.send(bytes(iii, encoding='utf-8'))
+                        sock.recv(10)
+                        break
+                    except Exception:
+                        print('Cannot connect to server.')
+                        while 1:
+                            cont = input('Try again (y/n)?')
+                            if cont == 'y' or cont == 'n':
+                                break
+                            print('Check your input')
+                        if cont == 'n':
+                            exit(0)
+                
 
 if __name__ == '__main__':
     try:
