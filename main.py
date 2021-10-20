@@ -257,9 +257,15 @@ def main():
         while 1:
             try:
                 print('Retrying to connect to', ip_address)                        
-                sock = socket.socket()
-                sock.settimeout(30.0)
-                sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                for i in range(30):
+                    sock = socket.socket()
+                    sock.settimeout(1.0)
+                    try:
+                        sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                        break
+                    except:
+                        if i == 29:
+                            raise Exception 
                 print('connected')
                 sock.settimeout(10.0)
                 iii = f'{str(client_id)}' 
@@ -315,17 +321,20 @@ def main():
                 sock.send(message.encode(encoding='utf-8'))
                 data = sock.recv(1024)
                 print(f'>> {data.decode(encoding="utf-8")}')
-            # except ConnectionAbortedError as e:
-            #     print(f'connection with server lost: {e}')
-            #     return
             except Exception:
                 sock.close()
                 while 1:
                     try:
                         print('Retrying to connect to', ip_address)                        
-                        sock = socket.socket()
-                        sock.settimeout(30.0)
-                        sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                        for i in range(30):
+                            sock = socket.socket()
+                            sock.settimeout(1.0)
+                            try:
+                                sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                                break
+                            except:
+                                if i == 29:
+                                    raise Exception 
                         print('connected')
                         sock.settimeout(10.0)
                         iii = f'{str(client_id)}' 
@@ -351,9 +360,15 @@ def main():
                 while 1:
                     try:
                         print('Retrying to connect to', ip_address)                        
-                        sock = socket.socket()
-                        sock.settimeout(30.0)
-                        sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                        for i in range(30):
+                            sock = socket.socket()
+                            sock.settimeout(1.0)
+                            try:
+                                sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
+                                break
+                            except:
+                                if i == 29:
+                                    raise Exception 
                         print('connected')
                         sock.settimeout(10.0)
                         iii = f'{str(client_id)}' 
