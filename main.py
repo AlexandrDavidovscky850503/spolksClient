@@ -230,6 +230,38 @@ def download_file(sock, file_name, ip, message, c_id):
     return sock
 
 
+def reconnect(sock, ip, port, c_id):
+    while 1:
+        try:
+            print('Retrying to connect to', ip)                        
+            for i in range(30):
+                sock = socket.socket()
+                sock.settimeout(1.0)
+                try:
+                    sock.connect((ip if ip else '127.0.0.1', port))
+                    break
+                except:
+                    if i == 29:
+                        raise Exception 
+            print('connected')
+            sock.settimeout(10.0)
+            iii = f'{str(c_id)}' 
+            sock.send(bytes(iii, encoding='utf-8'))
+            sock.recv(10)
+            break
+        except Exception:
+            print('Cannot connect to server.')
+            while 1:
+                cont = input('Try again (y/n)?')
+                if cont == 'y' or cont == 'n':
+                    break
+                print('Check your input')
+            if cont == 'n':
+                exit(0)
+    
+    return sock
+
+
 def main():
     print('TCP Client!')
     while 1:
@@ -254,33 +286,7 @@ def main():
         sock.recv(10)
     except Exception:
         sock.close()
-        while 1:
-            try:
-                print('Retrying to connect to', ip_address)                        
-                for i in range(30):
-                    sock = socket.socket()
-                    sock.settimeout(1.0)
-                    try:
-                        sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
-                        break
-                    except:
-                        if i == 29:
-                            raise Exception 
-                print('connected')
-                sock.settimeout(10.0)
-                iii = f'{str(client_id)}' 
-                sock.send(bytes(iii, encoding='utf-8'))
-                sock.recv(10)
-                break
-            except Exception:
-                print('Cannot connect to server.')
-                while 1:
-                    cont = input('Try again (y/n)?')
-                    if cont == 'y' or cont == 'n':
-                        break
-                    print('Check your input')
-                if cont == 'n':
-                    exit(0)
+        sock = reconnect(sock, ip_address, SOCKET_PORT, client_id)
     # print(sock.getsockname()[1])
     # port = sock.getsockname()[1]
     while True:
@@ -323,33 +329,7 @@ def main():
                 print(f'>> {data.decode(encoding="utf-8")}')
             except Exception:
                 sock.close()
-                while 1:
-                    try:
-                        print('Retrying to connect to', ip_address)                        
-                        for i in range(30):
-                            sock = socket.socket()
-                            sock.settimeout(1.0)
-                            try:
-                                sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
-                                break
-                            except:
-                                if i == 29:
-                                    raise Exception 
-                        print('connected')
-                        sock.settimeout(10.0)
-                        iii = f'{str(client_id)}' 
-                        sock.send(bytes(iii, encoding='utf-8'))
-                        sock.recv(10)
-                        break
-                    except Exception:
-                        print('Cannot connect to server.')
-                        while 1:
-                            cont = input('Try again (y/n)?')
-                            if cont == 'y' or cont == 'n':
-                                break
-                            print('Check your input')
-                        if cont == 'n':
-                            exit(0)
+                sock = reconnect(sock, ip_address, SOCKET_PORT, client_id)
         else:
             try:
                 sock.send(message.encode(encoding='utf-8'))            
@@ -357,33 +337,7 @@ def main():
                 print(f'>> {data.decode(encoding="utf-8")}')
             except Exception:
                 sock.close()
-                while 1:
-                    try:
-                        print('Retrying to connect to', ip_address)                        
-                        for i in range(30):
-                            sock = socket.socket()
-                            sock.settimeout(1.0)
-                            try:
-                                sock.connect((ip_address if ip_address else '127.0.0.1', SOCKET_PORT))
-                                break
-                            except:
-                                if i == 29:
-                                    raise Exception 
-                        print('connected')
-                        sock.settimeout(10.0)
-                        iii = f'{str(client_id)}' 
-                        sock.send(bytes(iii, encoding='utf-8'))
-                        sock.recv(10)
-                        break
-                    except Exception:
-                        print('Cannot connect to server.')
-                        while 1:
-                            cont = input('Try again (y/n)?')
-                            if cont == 'y' or cont == 'n':
-                                break
-                            print('Check your input')
-                        if cont == 'n':
-                            exit(0)
+                sock = reconnect(sock, ip_address, SOCKET_PORT, client_id)
                 
 
 if __name__ == '__main__':
