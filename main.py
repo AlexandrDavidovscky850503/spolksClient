@@ -158,7 +158,7 @@ def get_data():
 
 def send_data(data):
     # client.sendto(str(data).encode('utf-8'), server_address)
-    udp_send(data, server_address, 1024, 1)
+    udp_send(str(data), server_address, 1024, 1)
 
 
 def handle_input_request(request):
@@ -187,6 +187,7 @@ def handle_input_request(request):
         send_data(request)
         if (wait_for_ack(command) == False):
             return
+        print('ddddddddddddd')
         download(params, request)
 
 
