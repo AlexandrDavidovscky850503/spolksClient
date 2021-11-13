@@ -157,7 +157,8 @@ def get_data():
     return [data, address]
 
 def send_data(data):
-    client.sendto(str(data).encode('utf-8'), server_address)
+    # client.sendto(str(data).encode('utf-8'), server_address)
+    udp_send(data, server_address, 1024, 1)
 
 
 def handle_input_request(request):
@@ -168,18 +169,18 @@ def handle_input_request(request):
         params = data[1]
 
     if (command == "echo"):
-        # send_data(request)
-        udp_send(request, server_address, 1024, 1)
-        if (wait_for_ack(command) == False):
-            print('bbbbbbbbbbbbbbbbbb')
-            return
+        send_data(request)
+        # udp_send(request, server_address, 1024, 1)
+        # if (wait_for_ack(command) == False):
+        #     print('bbbbbbbbbbbbbbbbbb')
+        #     return
         
         echo()
 
     if (command == "time"):
         send_data(request)
-        if (wait_for_ack(command) == False):
-            return
+        # if (wait_for_ack(command) == False):
+        #     return
         get_time()
 
     if (command == "download"):
@@ -191,8 +192,8 @@ def handle_input_request(request):
 
     if (command == "exit"):
         send_data(request)
-        if (wait_for_ack(command) == False):
-            return
+        # if (wait_for_ack(command) == False):
+        #     return
         client.close()
         os._exit(1)
 
