@@ -40,7 +40,7 @@ def upload_reconnect(connection, ip, port, c_id, f_l, a_to_read):
             part = f_l.read(a_to_read)
             break
         except Exception as e:
-            print('Cannot connect to server.')
+            print('Cannot connect to client.')
             while 1:
                 cont = input('Try again (y/n)?')
                 if cont == 'y' or cont == 'n':
@@ -77,7 +77,7 @@ def download_reconnect(sock, ip, port, c_id, t_read, l_bytes_read):
             sock.settimeout(10.0)
             break
         except Exception as e:
-            print('Cannot connect to server.')
+            print('Cannot connect to client.')
             while 1:
                 cont = input('Try again (y/n)?')
                 if cont == 'y' or cont == 'n':
@@ -109,7 +109,7 @@ def reconnect(sock, ip, port, c_id):
             sock.recv(10)
             break
         except Exception:
-            print('Cannot connect to server.')
+            print('Cannot connect to client.')
             while 1:
                 cont = input('Try again (y/n)?')
                 if cont == 'y' or cont == 'n':
@@ -122,7 +122,7 @@ def reconnect(sock, ip, port, c_id):
 
 
 def upload_file(connection, file_name, ip, message, c_id):
-    print('Upload to server')
+    print('Upload to client')
     filesize = os.path.getsize(file_name)
     print('Size: ', filesize)
     connection.settimeout(10.0)
@@ -240,7 +240,7 @@ def download_file(sock, file_name, ip, message, c_id):
                             sock.settimeout(10.0)
                             break
                         except Exception as e:
-                            print('Cannot connect to server.')
+                            print('Cannot connect to client.')
                             while 1:
                                 cont = input('Try again (y/n)?')
                                 if cont == 'y' or cont == 'n':
@@ -270,7 +270,7 @@ def download_file(sock, file_name, ip, message, c_id):
 def main():
     print('TCP Client!')
     while 1:
-        ip_address = input(f'enter the server ip address: ')
+        ip_address = input(f'enter the client ip address: ')
         res = regex.match(
             "^([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])\.([\d]|[1-9][\d]|1[\d][\d]|2[0-4][\d]|25[0-5])$",
             ip_address)
@@ -356,44 +356,49 @@ datagram_count_out = 0
 def udp_send(data, addr, bytes_amount, datagrams_amount):
     global datagram_count_out
     datagram_count_out_old = datagram_count_out
-    print('Send')
-    print('start ', datagram_count_out)
-    data_part = str()
-    for i in range(datagrams_amount):
-        temp = format(datagram_count_out, '05d')
-        print('===iteration ', i)
-        data_part = data[:bytes_amount]
-        data_part = str.encode(temp + data_part)
-        print(data_part)
-        print(data)
-        client.sendto(data_part, addr)
-        data = data[bytes_amount:]
-        # datagram_count_out += 1
-        if datagram_count_out == 99999:
-            datagram_count_out = 0
+    # print('Send')
+    # print('start ', datagram_count_out)
+    data_part = bytes()
+    while(True):
+        for i in range(datagrams_amount):
+            temp = format(datagram_count_out, '05d').encode('utf-8')
+            # print('===iteration ', i)
+            data_part = data[:bytes_amount]
+            data_part = temp + data_part
+            # print(data_part)
+            # print(data)
+            client.sendto(data_part, addr)
+            data = data[bytes_amount:]
+            # datagram_count_out += 1
+            if datagram_count_out == 99999:
+                datagram_count_out = 0
+            else:
+                datagram_count_out += 1
+
+        seq_num = client.recvfrom(bytes_amount)
+        
+        try:
+            seq_num_int = int(seq_num[0])
+        except Exception:
+            datagram_count_out = datagram_count_out_old
+            continue
+        # print(seq_num_int)
+        # print('datagram_count_out_old ', datagram_count_out_old)
+        # print('datagrams_amount ', datagrams_amount)
+        # print('seq_num_int ', seq_num_int)
+        # print('datagram_count_out ', datagram_count_out)
+        if 99999 - datagram_count_out_old < datagrams_amount and seq_num_int >= 0 and seq_num_int < datagrams_amount - (99999 - datagram_count_out_old):
+            sent_amount = 99999 - datagrams_amount + 1 + seq_num_int
         else:
-            datagram_count_out += 1
+            sent_amount = seq_num_int - datagram_count_out_old
 
-    seq_num = client.recvfrom(bytes_amount)
-    
-    seq_num_int = int(seq_num[0])
-    print(seq_num_int)
-    print('datagram_count_out_old ', datagram_count_out_old)
-    print('datagrams_amount ', datagrams_amount)
-    print('seq_num_int ', seq_num_int)
-    print('datagram_count_out ', datagram_count_out)
-    if 99999 - datagram_count_out_old < datagrams_amount and seq_num_int >= 0 and seq_num_int < datagrams_amount - (99999 - datagram_count_out_old):
-        sent_amount = 99999 - datagrams_amount + 1 + seq_num_int
-    else:
-        sent_amount = seq_num_int - datagram_count_out_old
-
-    if datagram_count_out == int(seq_num[0]):
-        datagram_count_out = int(seq_num[0])
-        print('finish ', datagram_count_out)
-        return True, sent_amount
-    else:
-        print('finish ', datagram_count_out)
-        return False, sent_amount
+        if datagram_count_out == int(seq_num[0]):
+            datagram_count_out = int(seq_num[0])
+            # print('finish ', datagram_count_out)
+            return True, sent_amount
+        else:
+            # print('finish ', datagram_count_out)
+            return False, sent_amount
 
 
 def udp_recv(bytes_amount, timeout, datagrams_amount):
@@ -490,7 +495,7 @@ def get_data():
 
 def send_data(data):
     # client.sendto(str(data).encode('utf-8'), server_address)
-    udp_send(str(data), server_address, 1024, 1)
+    udp_send(str(data).encode('utf-8'), server_address, 1024, 1)
 
 
 def handle_input_request(request):
