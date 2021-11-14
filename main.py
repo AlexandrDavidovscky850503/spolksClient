@@ -298,7 +298,8 @@ def download(file_name, request):
     progress.update(total_size)
     while (1):
         try:
-            data = client.recvfrom(UDP_BUFFER_SIZE)[0]
+            # data = client.recvfrom(UDP_BUFFER_SIZE)[0]
+            data, address, a = udp_recv(1029, None, 1)
             if data:
                 if data == b'EOF':
                     break
