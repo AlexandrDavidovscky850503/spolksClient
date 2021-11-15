@@ -381,7 +381,7 @@ def udp_send(data, addr, bytes_amount, datagrams_amount):
 
         try:
             client.settimeout(3.0)
-            seq_num = client.recvfrom(bytes_amount)
+            seq_num = client.recvfrom(5)
             client.settimeout(None)
         except Exception:
             print('Exc')
@@ -507,6 +507,7 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
     if recv_flag:
         print('aaaaa1')
         temp = format(datagram_count_in, '05d')
+        print(temp)
         client.sendto(str.encode(temp), addr)
     else:
         addr = None
