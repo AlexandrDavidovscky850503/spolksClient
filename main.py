@@ -344,11 +344,12 @@ def main():
 #===================UDP start=========================
 WINDOW_SIZE = 4096
 
-UDP_BUFFER_SIZE = 48000
+UDP_BUFFER_SIZE = 1024
 TIMEOUT = 20
 DOWNLOAD_PROGRESS = 0
 OK_STATUS = 200
 UDP_DATAGRAMS_AMOUNT = 5
+server_address = ('127.0.0.1', SOCKET_PORT)
 
 datagram_count_in = 0
 datagram_count_out = 0
@@ -577,7 +578,7 @@ def udp_recv(bytes_amount, timeout, datagrams_amount, recv_flags, buffer):
             i += 1
 
         if all(recv_flags[i]==True for i in range(i_temp, datagrams_amount)):
-            # print('aaaaa2')
+            print('aaaaa2')
             # for j in range(i_temp):
             #     recv_flags[j] = False
             for j in range(i_temp, datagrams_amount):
@@ -593,7 +594,8 @@ def udp_recv(bytes_amount, timeout, datagrams_amount, recv_flags, buffer):
             # print('aaaaa1')
             temp = format(datagram_count_in, '05d')
             # print(temp)
-            client.sendto(str.encode(temp), addr)
+            print(addr)
+            client.sendto(str.encode(temp), server_address)
             # print(len(data))
             break
         else:
