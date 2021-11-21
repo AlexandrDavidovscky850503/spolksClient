@@ -530,6 +530,7 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
                     client.settimeout(5)
                 else:
                     client.settimeout(0.1)
+                # print('r')
                 data_temp, bbb = client.recvfrom(bytes_amount)
                 # print(addr)
                 client.settimeout(None)
@@ -556,7 +557,7 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
             # print('datagrams_amount', datagrams_amount)
 
             if seq_num_temp >= datagram_count_in and seq_num_temp < datagram_count_in + datagrams_amount:
-                # print(seq_num_temp)
+                # print(seq_num_temp - datagram_count_in_begin)
                 recv_flags[seq_num_temp - datagram_count_in_begin] = True
 
                 # seq_nums[seq_num - datagram_count_in] = seq_num
