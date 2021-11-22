@@ -344,7 +344,7 @@ def main():
 #===================UDP start=========================
 WINDOW_SIZE = 4096
 
-UDP_BUFFER_SIZE = 32768
+UDP_BUFFER_SIZE = 16384
 TIMEOUT = 20
 DOWNLOAD_PROGRESS = 0
 OK_STATUS = 200
@@ -378,7 +378,7 @@ def udp_send(data, addr, bytes_amount, datagrams_amount, greeting_flag = False):
             # print(temp)
             # print(data)
             # print(f's {i} _ {temp}')
-            print(addr)
+            # print(addr)
             client.sendto(data_part, addr)
             data = data[bytes_amount:]
             # datagram_count_out += 1
@@ -434,87 +434,6 @@ def udp_send(data, addr, bytes_amount, datagrams_amount, greeting_flag = False):
             # print('finish ', datagram_count_out)
             # return False, sent_amount
             continue
-
-def udp_recv1(bytes_amount, timeout, datagrams_amount):
-    global datagram_count_in 
-    print('Recv')
-    # print('start ', datagram_count_in)
-    # datagram_count_in_temp = datagram_count_in
-    # error_flag = False
-    exc_flag = False
-    recv_flag = False
-    client.settimeout(timeout)
-    data = bytes()
-
-    recv_flags = []
-    # seq_nums = []
-    buffer = []
-    addr = '0.0.0.0'
-    
-    # for i in range(datagrams_amount):
-    #     recv_flags.append(False)
-    #     # seq_nums.append(0)
-    #     buffer.append(bytes())
-    print('AAAA')
-
-    for i in range(datagrams_amount):
-        print('===iteration ', i)
-        try:
-            data_temp, addr = client.recvfrom(bytes_amount)
-            recv_flag = True
-            # print(data_temp)
-            seq_num_str = data_temp[:5]
-            seq_num = int(seq_num_str)
-            # print('seq_num', seq_num)
-        except Exception:
-            # print('bbbbbb')
-            exc_flag = True
-            break
-
-        if seq_num == datagram_count_in:
-            data += data_temp[5:]
-            if datagram_count_in == 99999:
-                datagram_count_in = 0
-            else:
-                datagram_count_in += 1
-        else:
-            break
-
-        # if 99999 - datagram_count_in < datagrams_amount and seq_num >= 0 and seq_num < datagrams_amount - (99999 - datagram_count_in) - 1:
-        #     seq_num_temp = 99999 + 1 + seq_num
-        # else:
-        #     seq_num_temp = seq_num
-        # if seq_num_temp >= datagram_count_in and seq_num_temp < datagram_count_in + datagrams_amount:
-        #     recv_flags[seq_num_temp - datagram_count_in] = not recv_flags[seq_num_temp - datagram_count_in]
-
-            # buffer[seq_num_temp - datagram_count_in] = bytes(data_temp[5:])
-    # if all(b==True for b in recv_flags):
-    #     for i in range(datagrams_amount):
-    #         data += buffer[i]
-    #     if datagram_count_in + datagrams_amount > 99999:
-    #         datagram_count_in = datagrams_amount - (99999 - datagram_count_in) - 1
-    #     else:
-    #         datagram_count_in += datagrams_amount
-    # else:
-    #     for i in range(datagrams_amount):
-    #         if recv_flags[i] == True:
-    #             data += buffer[i]
-    #             if datagram_count_in == 99999:
-    #                 datagram_count_in = 0
-    #             else:
-    #                 datagram_count_in += 1
-    #         else:
-    #             break
-        
-    # print('finish ', datagram_count_in)
-
-    if recv_flag:
-        temp = format(datagram_count_in, '05d')
-        client.sendto(str.encode(temp), addr)
-    else:
-        addr = None
-    
-    return data, addr, exc_flag
 
 def udp_recv(bytes_amount, timeout, datagrams_amount, recv_flags, buffer):
     global server_address
@@ -625,8 +544,8 @@ def udp_recv(bytes_amount, timeout, datagrams_amount, recv_flags, buffer):
             # print('aaaaa3', datagram_count_in)
             # print(i_temp)
             # print(recv_flags)
-            if aaa:
-                print('aaaaa3', datagram_count_in)
+            if not aaa:
+                # print('aaaaa3', datagram_count_in)
                 aaa = True
                 for j in range(datagrams_amount):
                     if recv_flags[j] == True:
@@ -676,54 +595,132 @@ def udp_recv(bytes_amount, timeout, datagrams_amount, recv_flags, buffer):
     return data, addr, exc_flag
 
 
-# def udp_recv2(bytes_amount, timeout, datagrams_amount):
+
+# def udp_recv(bytes_amount, timeout, datagrams_amount):
+#     global server_address
+#     # print(recv_flags)
 #     global datagram_count_in
 #     datagram_count_in_old = datagram_count_in 
+#     datagram_count_in_begin = datagram_count_in 
+
 #     exc_flag = False
-#     recv_flag = False
-#     client.settimeout(timeout)
+#     aaa = False
+#     tim1 = timeout if timeout == None else 0.001
+#     tim2 = timeout if timeout == None else 1
 #     data = bytes()
-#     counter = 0
+#     req = 0
 
 #     i_temp = 0
-#     recv_flags = []
-#     # seq_nums = []
-#     buffer = []
-#     addr = '0.0.0.0'
+#     addr = ('127.0.0.1', SOCKET_PORT)
+
 
 #     while 1:
-#         for i in range(i_temp, datagrams_amount):
-#             # print('===iteration ', i)
+#         i = i_temp
+#         while i < datagrams_amount:
 #             try:
-#                 client.settimeout(1.0)
-#                 data_temp, addr = client.recvfrom(bytes_amount)
-#                 client.settimeout(None)
-#                 # print('===iteration ', i)
-#                 recv_flag = True
+#                 if aaa:
+                    
+#                     client.settimeout(tim2)
+#                 else:
+#                     client.settimeout(tim1)
+#                 # print(i)
+#                 data_temp, bbb = client.recvfrom(bytes_amount)
 #                 # print(data_temp)
-#                 seq_num_str = data_temp[:5]
-#                 seq_num = int(seq_num_str)
+#                 client.settimeout(None)
+                
+#                 # print('===iteration ', i)
+#                 seq_num = int(data_temp[:5])
+
+#                 if datagram_count_in == 99999:
+#                     datagram_count_in = 0
+#                 else:
+#                     datagram_count_in += 1
+
+
+#                 if aaa and seq_num != req:
+#                     # print('A')
+#                     continue
+#                 elif aaa and seq_num == req:
+#                     # print('B')
+#                     aaa = False
 #                 # print('seq_num', seq_num)
 #             except Exception:
-#                 # input(f'bbbbbb{i} {seq_num}')
+#                 # print(f'bbbbbb', i)
+#                 i += 1
 #                 exc_flag = True
+#                 # continue
+#                 break
+#             # if not error_flag:
+            
+#             # print('seq_num', seq_num)
+#             if 99999 - datagram_count_in < datagrams_amount and seq_num >= 0 and seq_num < datagrams_amount - (99999 - datagram_count_in) - 1:
+#                 print('A')
+#                 seq_num_temp = 99999 + 1 + seq_num
+#             else:
+#                 seq_num_temp = seq_num
+#             # print('datagram_count_in', datagram_count_in)
+#             # print('datagrams_amount', datagrams_amount)
+#             # print('seq_num_temp', seq_num_temp)
+#             if datagram_count_in == seq_num_temp + 1:
+#                 # print('sssss')
+#                 # print(data_temp)
+#                 data += bytes(data_temp[5:])
+#             else:
 #                 break
 
 
-#         if counter == 50:
-#             data += data_temp[5:]
-#             if datagram_count_in == 99999:
-#                 datagram_count_in = 0
-#             else:
-#                 datagram_count_in += 1
-#         else:
-#             break
 
-        
+#             # if seq_num_temp >= datagram_count_in and seq_num_temp < datagram_count_in_begin + datagrams_amount:
+#             #     # print(seq_num_temp - datagram_count_in_begin)
+#             #     recv_flags[seq_num_temp - datagram_count_in_begin] = True
+#             #     buffer[seq_num_temp - datagram_count_in_begin] = bytes(data_temp[5:])
+
+#             i += 1
+
+#         if datagram_count_in == datagram_count_in_begin + datagrams_amount:
+#             # print('aaaaa1')
 #             temp = format(datagram_count_in, '05d')
-#             # print(temp)
-#             client.sendto(str.encode(temp), addr)
+#             client.settimeout(None)
+#             client.sendto(str.encode(temp), server_address)
+#             break
+#         else:
+#             # print('aaaaa3', datagram_count_in)
+#             # print(i_temp)
+#             # print(recv_flags)
+#             # print('aaaaa3', datagram_count_in)
+#             aaa = True
+#                 # for j in range(datagrams_amount):
+#                 #     if recv_flags[j] == True:
+#                 #         data += buffer[j]
+#                 #         counter += 1
+#                 #         recv_flags[j] = False
+#                 #         if datagram_count_in == 99999:
+#                 #             datagram_count_in = 0
+#                 #         else:
+#                 #             datagram_count_in += 1
+#                 #     else:
+#                 #         break
+
+            
+#             i_temp = datagram_count_in - datagram_count_in_old
+#                 # print(i_temp)
+#                 # for j in range(i_temp, datagrams_amount):
+#                 #     recv_flags[j] = False
+
+#             datagram_count_in_old = datagram_count_in
+#                 # print('bbbbbb1')
+#             req = datagram_count_in
+#             temp = format(datagram_count_in, '05d')
+#             client.settimeout(None)
+#             client.sendto(str.encode(temp), server_address)
 #             continue
+    
+#     return data, addr, exc_flag
+
+
+
+
+
 
 def get_data():
     # data, address = client.recvfrom(UDP_BUFFER_SIZE)
@@ -733,6 +730,7 @@ def get_data():
         recv_flags.append(False)
         # seq_nums.append(0)
         buffer.append(bytes())
+    # data, address, a = udp_recv(UDP_BUFFER_SIZE, None, 1)
     data, address, a = udp_recv(UDP_BUFFER_SIZE, None, 1, recv_flags, buffer)
     print('AAAAA', data)
     data = data.decode('utf-8')
@@ -753,17 +751,10 @@ def handle_input_request(request):
 
     if (command == "echo"):
         send_data(request)
-        # udp_send(request, server_address, 1024, 1)
-        # if (wait_for_ack(command) == False):
-        #     print('bbbbbbbbbbbbbbbbbb')
-        #     return
-        
         echo()
 
     if (command == "time"):
         send_data(request)
-        # if (wait_for_ack(command) == False):
-        #     return
         get_time()
 
     if (command == "download"):
@@ -790,33 +781,8 @@ def handle_input_request(request):
                 ")
 
     if (command == "exit"):
-        # send_data(request)
-        # if (wait_for_ack(command) == False):
-        #     return
         client.close()
         os._exit(1)
-
-# def wait_for_ack(command_to_compare):
-#     while True:
-#         response = get_data()[0].split(" ", 2)
-
-#         if not response:
-#             return False
-
-#         sent_request = response[0]
-#         status = response[1]
-
-#         if (len(response) > 2):
-#             message = response[2]
-#         else: message = None
-
-#         if (command_to_compare == sent_request and int(status) == OK_STATUS):
-#             return True
-#         elif (message):
-#             print(message)
-#             return False
-#         else:
-#             return False
 
 def wait_for_ack(command_to_compare):
     while True:
@@ -828,6 +794,7 @@ def wait_for_ack(command_to_compare):
             # seq_nums.append(0)
             buffer.append(bytes())
         # response = get_data()[0].split(" ", 2)
+        # response, a, b = udp_recv(UDP_BUFFER_SIZE, 10.0, 1)
         response, a, b = udp_recv(UDP_BUFFER_SIZE, 10.0, 1, recv_flags, buffer)
         print(response)
         response = str(response.decode('utf-8')).split(" ", 2)
@@ -843,22 +810,12 @@ def wait_for_ack(command_to_compare):
             message = response[2]
         else: message = None
 
-        print('44444444444444')
-        print(command_to_compare)
-        print(sent_request)
-        print(int(status))
-        print(OK_STATUS)
-
-
-
         if (command_to_compare == sent_request and int(status) == OK_STATUS):
             return True
         elif (message):
-            print('222222222')
             print(message)
             return False
         else:
-            print('33333333333')
             return False
 
 def echo():
@@ -927,8 +884,8 @@ def download(file_name, request):
     global WINDOW_SIZE
     global DOWNLOAD_PROGRESS # ?
 
-    send_data(WINDOW_SIZE)
-    print("WINDOW_SIZE = ")
+    # send_data(WINDOW_SIZE)
+    # print("WINDOW_SIZE = ")
     # WINDOW_SIZE = int(get_data()[0])
     # server_window = WINDOW_SIZE
     # print(WINDOW_SIZE)
@@ -938,18 +895,17 @@ def download(file_name, request):
     print(size)
     send_data(DOWNLOAD_PROGRESS)
 
-    data_size_recv = int(get_data()[0])
-    print("data_size_recv = ")
-    print(data_size_recv)
+    # data_size_recv = int(get_data()[0])
+    # print("data_size_recv = ")
+    # print(data_size_recv)
     file_name = os.path.basename(file_name)
-    if (data_size_recv == 0):
+    if (DOWNLOAD_PROGRESS == 0):
         f = open(file_name, "wb")
     else:
         f = open(file_name, "rb+")
 
-    current_pos = data_size_recv
+    current_pos = DOWNLOAD_PROGRESS
     print("=====================")
-    i = 0
 
     recv_flags = []
     buffer = []
@@ -961,14 +917,10 @@ def download(file_name, request):
     progress = tqdm.tqdm(range(int(size)), f"Progress of {file_name}:", unit="B", unit_scale=True,
                          unit_divisor=1024)
     progress.update(total_size)
+    i = 0
     while (1):
         try:
-            # data = client.recvfrom(UDP_BUFFER_SIZE)[0]
-            # print('bbbbbbbb')
-            # print('bbbbbbbb')
-            # print('bbbbbbbb')
-            # print('bbbbbbbb')
-            # print('bbbbbbbb')
+            # data, address, a = udp_recv(UDP_BUFFER_SIZE + 5, 10.0, UDP_DATAGRAMS_AMOUNT)
             data, address, a = udp_recv(UDP_BUFFER_SIZE + 5, 10.0, UDP_DATAGRAMS_AMOUNT, recv_flags=recv_flags, buffer=buffer)
             if data:
                 if data == b'EOF':
@@ -989,12 +941,12 @@ def download(file_name, request):
                 # print(total_size)
                 if total_size == size:
                     break
-
-
             else:
                 print("Server disconnected")
                 return
-
+            i += 1
+            if i % 40:
+                time.sleep(0.005)
         except KeyboardInterrupt:
             print("KeyboardInterrupt was handled")
             send_data("ERROR")
@@ -1018,13 +970,6 @@ def send_greeting(client_id):
 
 
 #===================UDP END ==========================
-
-# if __name__ == '__main__':
-#     try:
-#         main()
-#     except Exception as e:
-#         print('Server unavailable')
-#         print(e)
 
 
 print("1 - UDP Client\n2 - TCP Client")
@@ -1058,7 +1003,8 @@ elif num == 1:
     while (is_valid_address == False):
         addr = input("\nInput host address [127.0.0.1 is default]: ")
         if not addr:
-            addr = '127.0.0.1'
+            # addr = '127.0.0.1'
+            addr = '192.168.1.2'
         if (regex.match(addr)):
             is_valid_address = True
             HOST = addr
