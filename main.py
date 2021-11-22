@@ -357,22 +357,23 @@ datagram_count_out = 0
 
 def udp_send(data, addr, bytes_amount, datagrams_amount):
     global datagram_count_out
-    datagram_count_out_old = datagram_count_out
-    # repeat_flag = False
+    datagram_count_out_old = int(datagram_count_out)
     # print('Send')
     # print('start ', datagram_count_out)
     data_part = bytes()
     data_temp = bytes(data)
+    i_temp = 0
     while(True):
         data = bytes(data_temp)
-        for i in range(datagrams_amount):
+        # print('A2A2', datagram_count_out)
+        for i in range(i_temp, datagrams_amount):
             temp = format(datagram_count_out, '05d').encode('utf-8')
             # print('===iteration ', i)
             data_part = data[:bytes_amount]
             data_part = temp + data_part
-            # repeat_flag = False
-            # print(data_part)
+            # print(temp)
             # print(data)
+            # print(f's {i} _ {temp}')
             client.sendto(data_part, addr)
             data = data[bytes_amount:]
             # datagram_count_out += 1
@@ -381,22 +382,17 @@ def udp_send(data, addr, bytes_amount, datagrams_amount):
             else:
                 datagram_count_out += 1
 
+        # print('A0A0', datagram_count_out)
+        client.settimeout(15)
+        seq_num = client.recvfrom(5)
+        client.settimeout(None)
+        # print('A1A1', seq_num)
+        
         try:
-            client.settimeout(3.0)
-            seq_num = client.recvfrom(5)
-            client.settimeout(None)
-        except Exception:
-            # print('Exc')
-            # repeat_flag = True
-            # i -= 1
-            if datagram_count_out == 0:
-                datagram_count_out = 99999
-            else:
-                datagram_count_out -= 1
-            continue
-        try:    
+            # print(seq_num[0])
             seq_num_int = int(seq_num[0])
         except Exception:
+            
             datagram_count_out = datagram_count_out_old
             continue
         # print(seq_num_int)
@@ -410,12 +406,20 @@ def udp_send(data, addr, bytes_amount, datagrams_amount):
             sent_amount = seq_num_int - datagram_count_out_old
 
         if datagram_count_out == int(seq_num[0]):
+            # print('BBBB')
             datagram_count_out = int(seq_num[0])
             # print('finish ', datagram_count_out)
             return True, sent_amount
         else:
+            datagram_count_out = int(seq_num[0])
+            # datagrams_amount = datagram_count_out - datagram_count_out_old
+            i_temp = int(seq_num[0]) - datagram_count_out_old
+            datagram_count_out_old = int(seq_num[0])
+            data_temp[i_temp * bytes_amount:]
+            
             # print('finish ', datagram_count_out)
-            return False, sent_amount
+            # return False, sent_amount
+            continue
 
 def udp_recv1(bytes_amount, timeout, datagrams_amount):
     global datagram_count_in 
