@@ -382,6 +382,15 @@ def udp_send(data, addr, bytes_amount, datagrams_amount):
             else:
                 datagram_count_out += 1
 
+            try:
+                client.settimeout(0)
+                seq_num = client.recvfrom(5)
+                client.settimeout(None) 
+                break
+                   
+            except Exception:
+                pass
+
         # print('A0A0', datagram_count_out)
         client.settimeout(15)
         seq_num = client.recvfrom(5)
