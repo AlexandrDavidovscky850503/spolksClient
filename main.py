@@ -384,18 +384,21 @@ def udp_send(data, addr, bytes_amount, datagrams_amount, greeting_flag = False):
                 datagram_count_out = 0
             else:
                 datagram_count_out += 1
-            try:
-                fl = False
-                client.settimeout(0)
-                seq_num = client.recvfrom(5)
-                client.settimeout(None)
-                fl = True
-                break
+            if i < datagrams_amount - 1:
+                try:
+                    fl = False
+                    client.settimeout(0)
+                    seq_num = client.recvfrom(5)
+                    client.settimeout(None)
+                    fl = True
+                    break
 
-            except Exception:
-
-                client.settimeout(None)
-                pass
+                except Exception:
+                    # if exc_counter == 75:
+                    #      raise Exception
+                    # exc_counter += 1
+                    client.settimeout(None)
+                    pass
         # print('aaaaaaa')
 
         if not fl:
@@ -404,6 +407,7 @@ def udp_send(data, addr, bytes_amount, datagrams_amount, greeting_flag = False):
             seq_num = client.recvfrom(5)
 
             # print('A1A1', seq_num)
+        fl = False
         client.settimeout(None)
 
         if datagram_count_out_begin + datagrams_amount > 99999:
