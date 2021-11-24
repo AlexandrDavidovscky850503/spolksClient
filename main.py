@@ -343,14 +343,15 @@ def main():
 
 
 #===================UDP start=========================
-WINDOW_SIZE = 4096
+# WINDOW_SIZE = 4096
 
-UDP_BUFFER_SIZE = 16384
+UDP_BUFFER_SIZE = 32768
 TIMEOUT = 20
 DOWNLOAD_PROGRESS = 0
 OK_STATUS = 200
-UDP_DATAGRAMS_AMOUNT = 10
+UDP_DATAGRAMS_AMOUNT = 15
 server_address = ('127.0.0.1', SOCKET_PORT)
+client_id_str = 0
 
 datagram_count_in = 0
 datagram_count_out = 0
@@ -358,80 +359,77 @@ datagram_count_out = 0
 
 def udp_send(data, addr, bytes_amount, datagrams_amount, greeting_flag = False):
     global datagram_count_out
-    datagram_count_out_old = int(datagram_count_out)
-    # print('Send')
-    # print('start ', datagram_count_out)
-    data_part = bytes()
+    fl = False
+    datagram_count_out_begin = int(datagram_count_out)
     data_temp = bytes(data)
     i_temp = 0
+    seq_num = 0
     while(True):
-        data = bytes(data_temp)
-        # print('A2A2', datagram_count_out)
         for i in range(i_temp, datagrams_amount):
             temp = format(datagram_count_out, '05d').encode('utf-8')
             # print('===iteration ', i)
             data_part = data[:bytes_amount]
-            # print(data_part)
             if greeting_flag:
                 data_part = str('g').encode('utf-8') + temp + data_part
             else:
                 data_part = temp + data_part
-            # print(temp)
-            # print(data)
-            # print(f's {i} _ {temp}')
-            # print(addr)
+            # if not data_part:
+            #     print('Bla')
+
             client.sendto(data_part, addr)
+            # print(datagram_count_out)
             data = data[bytes_amount:]
             # datagram_count_out += 1
             if datagram_count_out == 99999:
                 datagram_count_out = 0
             else:
                 datagram_count_out += 1
+            if i < datagrams_amount - 1:
+                try:
+                    fl = False
+                    client.settimeout(0)
+                    seq_num = client.recvfrom(5)
+                    client.settimeout(None)
+                    fl = True
+                    break
 
-            try:
-                client.settimeout(0)
-                seq_num = client.recvfrom(5)
-                client.settimeout(None) 
-                break
-                   
-            except Exception:
-                pass
+                except Exception:
+                    # if exc_counter == 75:
+                    #      raise Exception
+                    # exc_counter += 1
+                    client.settimeout(None)
+                    pass
+        # print('aaaaaaa')
 
-        # print('A0A0', datagram_count_out)
-        client.settimeout(15)
-        seq_num = client.recvfrom(5)
+        if not fl:
+            # print('A0A0', datagram_count_out)
+            client.settimeout(10)
+            seq_num = client.recvfrom(5)
+
+            # print('A1A1', seq_num)
+        fl = False
         client.settimeout(None)
-        # print('A1A1', seq_num)
-        
-        try:
-            # print(seq_num[0])
-            seq_num_int = int(seq_num[0])
-        except Exception:
-            
-            datagram_count_out = datagram_count_out_old
-            continue
-        # print(seq_num_int)
-        # print('datagram_count_out_old ', datagram_count_out_old)
-        # print('datagrams_amount ', datagrams_amount)
-        # print('seq_num_int ', seq_num_int)
-        # print('datagram_count_out ', datagram_count_out)
-        if 99999 - datagram_count_out_old < datagrams_amount and seq_num_int >= 0 and seq_num_int < datagrams_amount - (99999 - datagram_count_out_old):
-            sent_amount = 99999 - datagrams_amount + 1 + seq_num_int
-        else:
-            sent_amount = seq_num_int - datagram_count_out_old
 
-        if datagram_count_out == int(seq_num[0]):
+        if datagram_count_out_begin + datagrams_amount > 99999:
+            dd = datagram_count_out_begin + datagrams_amount - 100000
+        else:
+            dd = datagram_count_out_begin + datagrams_amount
+
+        if datagram_count_out == int(seq_num[0]) and datagram_count_out == dd:
             # print('BBBB')
-            datagram_count_out = int(seq_num[0])
+            # datagram_count_out = int(seq_num[0])
             # print('finish ', datagram_count_out)
-            return True, sent_amount
+            return True
         else:
             datagram_count_out = int(seq_num[0])
             # datagrams_amount = datagram_count_out - datagram_count_out_old
-            i_temp = int(seq_num[0]) - datagram_count_out_old
+            if int(seq_num[0]) - datagram_count_out_begin < 0:
+                i_temp = 100000 + int(seq_num[0]) - datagram_count_out_begin
+            else:
+                i_temp = int(seq_num[0]) - datagram_count_out_begin
             datagram_count_out_old = int(seq_num[0])
-            data_temp[i_temp * bytes_amount:]
-            
+            data = bytes(data_temp[(datagram_count_out - datagram_count_out_begin) * bytes_amount:])
+
             # print('finish ', datagram_count_out)
             # return False, sent_amount
             continue
@@ -461,9 +459,10 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
         while i < datagrams_amount:
             try:
                 if aaa:
+                    # print('a')
                     client.settimeout(timeout)
                 else:
-                    client.settimeout(0.2)
+                    client.settimeout(0.1)
                 # print(i)
                 data_temp, bbb = client.recvfrom(bytes_amount)
                 # if len(data_temp) < bytes_amount:
@@ -475,7 +474,9 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
                 
                 # print('===iteration ', i)
                 seq_num = int(data_temp[:5])
-
+                # print('seq_num', seq_num)
+                # print('datagram_count_in', datagram_count_in)
+                # print('counter', counter)
                 if aaa and seq_num == req:
                     # print('B')
                     aaa = False
@@ -484,6 +485,8 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
                 i += 1
                 exc_flag = True
                 # continue
+                if aaa:
+                    raise Exception
                 break
             # print('i_temp', i_temp)
             # print(datagram_count_in - datagram_count_in_begin)
@@ -503,7 +506,7 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
         if counter == datagrams_amount:
             # print('aaaaa1')
             temp = format(datagram_count_in, '05d')
-            client.settimeout(None)
+            # client.settimeout(None)
             client.sendto(str.encode(temp), server_address)
             break
         else:
@@ -519,17 +522,10 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
 
             req = datagram_count_in
             temp = format(datagram_count_in, '05d')
-            client.settimeout(None)
+            # client.settimeout(None)
             client.sendto(str.encode(temp), server_address)
             continue
-
-
-    if not data:
-        print('counter', counter)
-        print('Bla')
-        print(data)
-        
-    
+         
     return data, addr, exc_flag
 
 
@@ -545,16 +541,20 @@ def get_data(ll):
     #     recv_flags.append(False)
     #     # seq_nums.append(0)
     #     buffer.append(bytes())
-    data, address, a = udp_recv(ll + 5, None, 1)
+    print('>Receiving information')
+    data, address, a = udp_recv(ll + 5, 10, 1)
+    print('>Information received ', data)
     # data, address, a = udp_recv(UDP_BUFFER_SIZE, None, 1, recv_flags, buffer)
-    print('AAAAA', data)
+    # print('AAAAA', data)
     data = data.decode('utf-8')
     return [data, address]
 
 def send_data(data):
     global server_address
+    print('>Sending information')
     # client.sendto(str(data).encode('utf-8'), server_address)
     udp_send(str(data).encode('utf-8'), server_address, UDP_BUFFER_SIZE, 1)
+    print('>Information sent')
 
 
 def handle_input_request(request):
@@ -564,42 +564,46 @@ def handle_input_request(request):
     if (len(data) == 2):
         params = data[1]
 
-    if (command == "echo"):
-        send_data(request)
-        echo(len(params))
+    try:
+        if (command == "echo"):
+            send_data(request)
+            echo(len(params))
 
-    if (command == "time"):
-        send_data(request)
-        get_time()
+        elif (command == "time"):
+            send_data(request)
+            get_time()
 
-    if (command == "download"):
-        send_data(request)
-        if (wait_for_ack(command, 12) == False):
-            return
-        print('ddddddddddddd')
-        download(params, request)
+        elif (command == "download"):
+            send_data(request)
+            if (wait_for_ack(command, 12) == False):
+                return
+            print('ddddddddddddd')
+            download(params, request)
 
-    if (command == "upload"):
-        send_data(request)
-        if (wait_for_ack(command) == False):
-            return
-        print('ddddddddddddd')
-        upload(params)
+        elif (command == "upload"):
+            send_data(request)
+            # if (wait_for_ack(command, 12) == False):
+            #     return
+            # print('ddddddddddddd')
+            upload(params)
 
-    if (command == "help"):
-        print("help - to see list of commands\n\
-                exit - to quit\n\
-                echo - to resend message to a client\n\
-                upload - to upload file on the server\n\
-                download - to download file from a server\n\
-                time - get server time\
-                ")
+        elif (command == "help"):
+            print("help - to see list of commands\n\
+                    exit - to quit\n\
+                    echo - to resend message to a client\n\
+                    upload - to upload file on the server\n\
+                    download - to download file from a server\n\
+                    time - get server time\
+                    ")
 
-    if (command == "exit"):
-        client.close()
-        os._exit(1)
+        elif (command == "exit"):
+            client.close()
+            os._exit(1)
+    except Exception:
+        print('Cannot process the command. Please, try again')
 
 def wait_for_ack(command_to_compare, ll):
+    print('wait_for_ack')
     while True:
     # for i in range(10):
         # recv_flags = []
@@ -615,7 +619,7 @@ def wait_for_ack(command_to_compare, ll):
         response = str(response.decode('utf-8')).split(" ", 2)
 
         if not response:
-            print('11111111111')
+            # print('11111111111')
             return False
 
         sent_request = response[0]
@@ -650,15 +654,15 @@ def upload(file_name):
     print("File size: %f" % (size))
     send_data(size)
 
-    data_size_recv = int(get_data()[0])
+    data_size_recv = int(get_data(UDP_BUFFER_SIZE)[0])
 
-    send_data(data_size_recv)
+    # send_data(data_size_recv)
 
     f.seek(data_size_recv, 0)
     current_pos = data_size_recv
 
-    print("current_pos = ")
-    print(current_pos)
+    # print("current_pos = ")
+    # print(current_pos)
 
     progress = tqdm.tqdm(range(int(size)), f"Progress of {file_name}:", unit="B", unit_scale=True,
                         unit_divisor=1024)
@@ -682,11 +686,13 @@ def upload(file_name):
                 # print(total_size)
                 if total_size == size:
                     break
-        except KeyboardInterrupt:
+        except Exception:
             f.close()
             client.close()
             progress.close()
-            os._exit(1)
+            print('Disconnected from server!')
+            # os._exit(1)
+            exit(0)
 
     progress.close()
     print("END")
@@ -696,23 +702,21 @@ def upload(file_name):
 
 
 def download(file_name, request):
-    global WINDOW_SIZE
+    global client_id_str
+    # global WINDOW_SIZE
     global DOWNLOAD_PROGRESS # ?
+    print('=download=')
 
-    # send_data(WINDOW_SIZE)
-    # print("WINDOW_SIZE = ")
-    # WINDOW_SIZE = int(get_data()[0])
-    # server_window = WINDOW_SIZE
-    # print(WINDOW_SIZE)
-    size = int(get_data(UDP_BUFFER_SIZE)[0])
-    total_size = 0
-    print("size = ")
-    print(size)
-    send_data(DOWNLOAD_PROGRESS)
+    try:
+        size = int(get_data(UDP_BUFFER_SIZE)[0])
+        total_size = 0
+        print("size = ", size)
+        # print(size)
+        send_data(DOWNLOAD_PROGRESS)
+    except Exception:
+        print('Cannot get information about the file. Please, try again')
+        return
 
-    # data_size_recv = int(get_data()[0])
-    # print("data_size_recv = ")
-    # print(data_size_recv)
     file_name = os.path.basename(file_name)
     if (DOWNLOAD_PROGRESS == 0):
         f = open(file_name, "wb")
@@ -721,13 +725,6 @@ def download(file_name, request):
 
     current_pos = DOWNLOAD_PROGRESS
     print("=====================")
-
-    # recv_flags = []
-    # buffer = []
-    # for i in range(UDP_DATAGRAMS_AMOUNT):
-    #     recv_flags.append(False)
-    #     # seq_nums.append(0)
-    #     buffer.append(bytes())
 
     progress = tqdm.tqdm(range(int(size)), f"Progress of {file_name}:", unit="B", unit_scale=True,
                          unit_divisor=1024)
@@ -746,11 +743,6 @@ def download(file_name, request):
                     f.write(data)
                     # print(len(data))
                     current_pos += len(data)
-                    # print(len(data))
-                    # server_window = server_window - len(data)
-                    # if (server_window == 0):
-                    #     server_window = WINDOW_SIZE
-                        # send_data(current_pos)
                 total_size+=len(data)
                 # print('upd')
                 progress.update(len(data))
@@ -762,14 +754,27 @@ def download(file_name, request):
                 return
             i += 1
             # if i % 40:
-            #     time.sleep(0.005)
-        except KeyboardInterrupt:
-            print("KeyboardInterrupt was handled")
-            send_data("ERROR")
+            #     time.sleep(0.01)
+        except Exception:
+            # print("KeyboardInterrupt was handled")
+            # send_data("ERROR")           
+            # try:
+            #     for i in range(3):
+            #         print('Retrying to connect...')
+            #         send_greeting(client_id_str)
+            # except Exception:
+            #     print('Unable to connect to server.')
             f.close()
             client.close()
             progress.close()
-            os._exit(1)
+            print('Disconnected from server!')
+            # os._exit(1)
+            exit(0)
+            # break
+            # f.close()
+            # client.close()
+            # progress.close()
+            # os._exit(1)
             # progress.close()
     progress.close()
     print("END")
@@ -793,7 +798,7 @@ print("1 - UDP Client\n2 - TCP Client")
 # num = int(input("Введите число: "))
 num = 0
 while(1):
-    num = input('Введите число: ')
+    num = input('Enter the number: ')
     try:
         num = int(num)
         if num == 1 or num == 2:
@@ -812,15 +817,16 @@ if num == 2:
 elif num == 1:
 
     is_valid_address = False
+    default_addr = '192.168.1.2'
+    # default_addr = '127.0.0.1'
 
     REGULAR_IP = '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
     regex = re.compile(REGULAR_IP)
 
     while (is_valid_address == False):
-        addr = input("\nInput host address [127.0.0.1 is default]: ")
+        addr = input(f"\nInput host address [{default_addr} is default]: ")
         if not addr:
-            addr = '127.0.0.1'
-            # addr = '192.168.1.2'
+            addr = default_addr
         if (regex.match(addr)):
             is_valid_address = True
             HOST = addr
@@ -842,7 +848,11 @@ elif num == 1:
     # client_id_str = bytes(client_id)
     client_id_str = client_id
 
-    send_greeting(client_id_str)
+    try:
+        send_greeting(client_id_str)
+    except Exception:
+        print('Cannot connect to server!')
+        exit(0)
     while True:
         request = input('<< ')
         if not request:
@@ -852,6 +862,3 @@ elif num == 1:
             print('Unknowm command. Please, try again')
             continue
         handle_input_request(request)
-
-
-         handle_input_request(request)
