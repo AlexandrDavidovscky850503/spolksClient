@@ -45,6 +45,7 @@ def uploadFile(file_name, request):
             data_size_recv += BUFFER_SIZE
             progress.update(len(data_file))
             f.seek(data_size_recv, 0)
+            wait_ok()
         except socket.error as e:
             if(isServerAviable(request, "upload")):
                 send_data(size)
@@ -104,6 +105,8 @@ def inputRequestHandle(request):
             return
         client.close()
         os._exit(1)
+    else:
+        print('Unknown command')
 
 def ackWait(command_to_compare):
     while True:
@@ -161,7 +164,7 @@ def downloadFile(file_name, request):
     client.send(str(0).encode('utf-8'))
     data_size_recv = int(client.recv(BUFFER_SIZE).decode('utf-8'))
     client.send("OK".encode('utf-8'))
-    progress = tqdm.tqdm(range(size), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
+    progress = tqdm.tqdm(range(size), f"Receiving {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
     if (data_size_recv == 0):
         f = open(file_name, "wb")
     else:
@@ -176,8 +179,6 @@ def downloadFile(file_name, request):
             data_size_recv += len(data)
             client.send(str(data_size_recv).encode('utf-8'))
             progress.update(len(data))
-
-
         except socket.error as e:
             if(isServerAviable(request, "download")):
                 size = int(client.recv(BUFFER_SIZE).decode('utf-8'))
@@ -190,12 +191,6 @@ def downloadFile(file_name, request):
                 f.close()
                 client.close()
                 os._exit(1)
-
-        except KeyboardInterrupt:
-            print("KeyboardInterrupt was handled")
-            f.close()
-            client.close()
-            os._exit(1)
     progress.close()
 
     f.close()
@@ -211,27 +206,6 @@ def checkValidRequest(request):
         return False
     else: return True
 
-
-
-is_valid_address = False
-
-REGULAR_IP = '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
-regex = re.compile(REGULAR_IP)
-
-
-# while (is_valid_address == False):
-#     addr = input("\nInput host addres: ")
-#     if (regex.match(addr)):
-#         is_valid_address = True
-#         HOST = addr
-#     else:
-#         try:
-#             HOST = socket.gethostbyname(addr)
-#             is_valid_address = True
-#         except socket.error:
-#             print("Please, input valid address")
-#             is_valid_address = False
-
 HOST = '127.0.0.1'
 
 print("Client start")
@@ -243,7 +217,7 @@ client.connect((HOST, SOCKET_PORT))
 while True:
 
     try:
-        request = input()
+        request = input('<< ')
         if (checkValidRequest(request)):
             inputRequestHandle(request)
     except KeyboardInterrupt:
