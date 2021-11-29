@@ -7,7 +7,7 @@ import sys
 
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 1024
-SOCKET_PORT = 19001
+SOCKET_PORT = 19012
 TIMEOUT = 20
 OK_STATUS = 200
 
@@ -35,6 +35,12 @@ def inputRequestHandle(request):
         if (ackWait(command) == False):
             return
         downloadFile(body, request)
+
+    if command == "upload":
+        client.send(str(request).encode('utf-8'))
+        if (ackWait(command) == False):
+            return
+        uploadFile(body, request)
 
     if command == "exit":
         client.send(str(request).encode('utf-8'))
@@ -75,7 +81,7 @@ def isServerAviable(request, command):
     while(i > 0):
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect((HOST, PORT))
+            client.connect((HOST, SOCKET_PORT))
             client.send(request.encode('utf-8'))
             ackWait(command)
             return True
@@ -91,7 +97,59 @@ def isServerAviable(request, command):
     print("\nServer was disconnected")
     sys.stdout.flush()
     return False
+    
+def send_data(data):
+    client.send(str(data).encode('utf-8'))
 
+def wait_ok():
+    while (client.recv(2).decode('utf-8') != "OK"):
+        print("wait for OK")
+
+def get_data():
+    return client.recv(BUFFER_SIZE).decode('utf-8')
+
+def uploadFile(file_name, request):
+    f = open (file_name, "rb+")
+    size = int(os.path.getsize(file_name))
+    progress = tqdm.tqdm(range(size), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
+    send_data(size)
+    print('Size', size)
+    wait_ok()
+    send_data(0)
+    data_size = get_data()
+    data_size_recv = int(data_size)
+    print('Data size', data_size_recv)
+    wait_ok()
+    f.seek(data_size_recv, 0)
+    # progress.update(len(data_size))
+    while (data_size_recv < size):
+        try:
+            data_file = f.read(BUFFER_SIZE)
+            client.send(data_file)
+            data_size_recv += BUFFER_SIZE
+            progress.update(len(data_file))
+            f.seek(data_size_recv, 0)
+        except socket.error as e:
+            if(isServerAviable(request, "upload")):
+                send_data(size)
+                wait_ok()
+                send_data(data_size_recv)
+                data_size_recv = int(get_data())
+                wait_ok()
+            else:
+                f.close()
+                progress.close()
+                client.close()
+                os._exit(1)
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt was handled")
+            f.close()
+            progress.close()
+            client.close()
+            os._exit(1)
+    f.close()
+    progress.close()
+    print("\n" + file_name + " was uploaded")
 
 def downloadFile(file_name, request):
     size = int(client.recv(BUFFER_SIZE).decode('utf-8'))
@@ -129,17 +187,10 @@ def downloadFile(file_name, request):
                 client.close()
                 os._exit(1)
 
-        except KeyboardInterrupt:
-            print("KeyboardInterrupt was handled")
-            f.close()
-            client.close()
-            os._exit(1)
     progress.close()
 
     f.close()
     print("\n" + file_name + " was downloaded")
-
-
 def exit():
     pass
 
@@ -153,23 +204,6 @@ def checkValidRequest(request):
 
 is_valid_address = False
 
-REGULAR_IP = '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
-regex = re.compile(REGULAR_IP)
-
-
-# while (is_valid_address == False):
-#     addr = input("\nInput host addres: ")
-#     if (regex.match(addr)):
-#         is_valid_address = True
-#         HOST = addr
-#     else:
-#         try:
-#             HOST = socket.gethostbyname(addr)
-#             is_valid_address = True
-#         except socket.error:
-#             print("Please, input valid address")
-#             is_valid_address = False
-
 HOST = '127.0.0.1'
 
 print("Client start")
@@ -181,7 +215,7 @@ client.connect((HOST, SOCKET_PORT))
 while True:
 
     try:
-        request = input()
+        request = input('<< ')
         if (checkValidRequest(request)):
             inputRequestHandle(request)
     except KeyboardInterrupt:
