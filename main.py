@@ -18,7 +18,22 @@ TIMEOUT = 20
 DOWNLOAD_PROGRESS = 0
 OK_STATUS = 200
 UDP_DATAGRAMS_AMOUNT = 15
-server_address = ('127.0.0.1', SOCKET_PORT)
+
+DOWNLOAD_SERVICE_PORT = 50001
+UPLOAD_SERVICE_PORT = 50002
+ECHO_SERVICE_PORT = 50003
+TIME_SERVICE_PORT = 50004
+
+server_download_addr = ('127.0.0.1', DOWNLOAD_SERVICE_PORT)
+server_upload_addr = ('127.0.0.1', UPLOAD_SERVICE_PORT)
+server_echo_addr = ('127.0.0.1', ECHO_SERVICE_PORT)
+server_time_addr = ('127.0.0.1', TIME_SERVICE_PORT)
+
+client_download_sock = None
+client_upload_sock = None
+client_echo_sock = None
+client_time_sock = None
+
 client_id_str = 0
 
 disconnected_flag = False
@@ -110,8 +125,7 @@ def udp_send(data, addr, bytes_amount, datagrams_amount, greeting_flag = False):
             continue
 
 
-def udp_recv(bytes_amount, timeout, datagrams_amount):
-    global server_address
+def udp_recv(server_address, bytes_amount, timeout, datagrams_amount):
     # print('recv')
     global datagram_count_in
     # datagram_count_in_old = datagram_count_in 
@@ -121,6 +135,10 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
     aaa = False
     data = bytes()
     counter = 0
+    attempts_counter = 0
+
+    timeout /= 10
+
     req = 0
 
     i_temp = 0
@@ -138,33 +156,41 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
                     client.settimeout(0.1)
                 # print(i)
                 data_temp, bbb = client.recvfrom(bytes_amount)
-                # if len(data_temp) < bytes_amount:
-                #     print(len(data_temp))
-                #     input('a')
-                #     raise Exception
+                print('Recv: ', data_temp)
+
                
                 client.settimeout(None)
                 
                 # print('===iteration ', i)
                 seq_num = int(data_temp[:5])
+                data_temp = data_temp[5:]
+                print('Recv: ', data_temp)
+                dunamic_sock_num = int(data_temp[:5])
+                print('data', data_temp)
                 # print('seq_num', seq_num)
                 # print('datagram_count_in', datagram_count_in)
                 # print('counter', counter)
                 if aaa and seq_num == req:
-                    # print('B')
+                    print('B')
                     aaa = False
             except Exception:
-                # print(f'bbbbbb', i)
+                print(f'bbbbbb', i)
                 i += 1
                 exc_flag = True
                 # continue
-                if aaa:
+                if aaa and attempts_counter == 10:
                     raise Exception
+                elif aaa:
+                    temp = format(datagram_count_in, '05d')
+                    client.sendto(str.encode(temp), server_address)
+                    attempts_counter += 1
                 break
             # print('i_temp', i_temp)
             # print(datagram_count_in - datagram_count_in_begin)
             # if datagram_count_in - datagram_count_in_begin > 4:
             #     input('datagram_count_in - datagram_count_in_begin!!!')
+            print('datagram_count_in', datagram_count_in)
+            print('seq_num', seq_num)
             if datagram_count_in == seq_num  :
                 counter += 1
                 data += bytes(data_temp[5:])
@@ -180,7 +206,13 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
             # print('aaaaa1')
             temp = format(datagram_count_in, '05d')
             # client.settimeout(None)
+            print('aaaaaaa', server_address)
+            server_address = list(server_address)
+            server_address[1] = dunamic_sock_num
+            server_address = tuple(server_address)
             client.sendto(str.encode(temp), server_address)
+            
+
             break
         else:
             # print('aaaaa3', datagram_count_in)
@@ -196,26 +228,34 @@ def udp_recv(bytes_amount, timeout, datagrams_amount):
             req = datagram_count_in
             temp = format(datagram_count_in, '05d')
             # client.settimeout(None)
+            server_address[1] = dunamic_sock_num
             client.sendto(str.encode(temp), server_address)
             continue
          
     return data, addr, exc_flag
 
-def get_data(ll):
+def get_data(addr, ll):
     print('>Receiving information')
-    data, address, a = udp_recv(ll + 5, 10, 1)
+    data, address, a = udp_recv(addr, ll + 5, 10, 1)
     print('>Information received ', data)
     data = data.decode('utf-8')
     return [data, address]
 
-def send_data(data):
-    global server_address
+def send_data(addr, data):
+    # global server_address
     print('>Sending information')
-    udp_send(str(data).encode('utf-8'), server_address, UDP_BUFFER_SIZE, 1)
+    udp_send(str(data).encode('utf-8'), addr, UDP_BUFFER_SIZE, 1)
     print('>Information sent')
 
 
 def handle_input_request(request):
+    global datagram_count_out
+    global datagram_count_in
+    global server_download_addr
+    global server_upload_addr
+    global server_echo_addr
+    global server_time_addr
+
     data = request.split()
     command = data[0]
 
@@ -224,19 +264,21 @@ def handle_input_request(request):
 
     try:
         if command == "echo":
-            send_data(request)
-            echo(len(params))
+            datagram_count_in = 0
+            datagram_count_out = 0
+            send_data(server_echo_addr, request)
+            echo(server_echo_addr, len(params) + 5)
 
         elif command == "time":
-            send_data(request)
-            get_time()
+            send_data(server_time_addr, request)
+            get_time(server_time_addr)
 
         elif command == "download":
-            send_data(request)
+            send_data(server_download_addr, request)
             download(params, request)
 
         elif command == "upload":
-            send_data(request)
+            send_data(server_upload_addr, request)
             upload(params)
 
         elif command == "help":
@@ -254,28 +296,30 @@ def handle_input_request(request):
     except Exception:
         print('Cannot process the command. Please, try again')
 
-def echo(l):
-    print(get_data(l)[0])
+def echo(addr, l):
+    print(get_data(addr, l)[0])
 
-def get_time():
-    print(get_data(21)[0])
+def get_time(addr):
+    print(get_data(addr, 21)[0])
 
 
 def upload(file_name):
-    global server_address
+    global server_upload_addr
     global disconnected_flag
     f = open(file_name, "rb+")
 
     size = int(os.path.getsize(file_name))
     total_size=0
 
-    print("File size: %f" % (size))
-    send_data(size)
-
-    data_size_recv = int(get_data(UDP_BUFFER_SIZE)[0])
+    data_size_recv = int(get_data(server_upload_addr, UDP_BUFFER_SIZE)[0])
 
     f.seek(data_size_recv, 0)
     current_pos = data_size_recv
+
+    print("File size: ", size)
+    send_data(server_upload_addr ,size)
+
+    get_data(server_upload_addr, UDP_BUFFER_SIZE)[0]
 
     progress = tqdm.tqdm(range(int(size)), f"Progress of {file_name}:", unit="B", unit_scale=True,
                         unit_divisor=1024)
@@ -286,7 +330,7 @@ def upload(file_name):
             if 1:
                 data_file = f.read(UDP_BUFFER_SIZE * UDP_DATAGRAMS_AMOUNT)
                 # server.sendto(data_file, addr)
-                udp_send(data_file, server_address, UDP_BUFFER_SIZE, UDP_DATAGRAMS_AMOUNT)
+                udp_send(data_file, server_upload_addr, UDP_BUFFER_SIZE, UDP_DATAGRAMS_AMOUNT)
                 
                 current_pos = current_pos + UDP_BUFFER_SIZE * UDP_DATAGRAMS_AMOUNT
                 f.seek(current_pos)
@@ -308,19 +352,22 @@ def upload(file_name):
 
 
 def download(file_name, request):
-    if int(get_data(UDP_BUFFER_SIZE)[0]) != OK_STATUS:
-        return
     global disconnected_flag
     global client_id_str
     global DOWNLOAD_PROGRESS # ?
+    global server_download_addr
+
+    if int(get_data(server_download_addr, UDP_BUFFER_SIZE)[0]) != OK_STATUS:
+        return
+
     print('=download=')
 
     try:
-        size = int(get_data(UDP_BUFFER_SIZE)[0])
+        size = int(get_data(server_download_addr, UDP_BUFFER_SIZE)[0])
         total_size = 0
         print("size = ", size)
         # print(size)
-        send_data(DOWNLOAD_PROGRESS)
+        send_data(server_download_addr, DOWNLOAD_PROGRESS)
     except Exception:
         print('Cannot get information about the file. Please, try again')
         return
@@ -340,7 +387,7 @@ def download(file_name, request):
     i = 0
     while (1):
         try:
-            data, address, a = udp_recv(UDP_BUFFER_SIZE + 5, 10.0, UDP_DATAGRAMS_AMOUNT)
+            data, address, a = udp_recv(server_download_addr, UDP_BUFFER_SIZE + 5, 10.0, UDP_DATAGRAMS_AMOUNT)
             if data:
                 if 1:
                     i += 1
@@ -410,7 +457,7 @@ elif num == 1:
     REGULAR_IP = '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
     regex = re.compile(REGULAR_IP)
 
-    while (is_valid_address == False):
+    while is_valid_address == False:
         addr = input(f"\nInput host address [{default_addr} is default]: ")
         if not addr:
             addr = default_addr
@@ -425,26 +472,29 @@ elif num == 1:
                 print("Please, input valid address")
                 is_valid_address = False
 
-    server_address = (addr, SOCKET_PORT)
+    server_download_addr = (addr, DOWNLOAD_SERVICE_PORT)
+    server_upload_addr = (addr, UPLOAD_SERVICE_PORT)
+    server_echo_addr = (addr, ECHO_SERVICE_PORT)
+    server_time_addr = (addr, TIME_SERVICE_PORT)
+
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # client.connect(server_address)
-    # print("Connected")
+
 
     client_id = random.randint(0, 65535)
     print('ID:', client_id)
     # client_id_str = bytes(client_id)
     client_id_str = client_id
 
-    try:
-        send_greeting(client_id_str)
-    except Exception:
-        print('Cannot connect to server!')
-        exit(0)
+    # try:
+    #     send_greeting(client_id_str)
+    # except Exception:
+    #     print('Cannot connect to server!')
+    #     exit(0)
     while True:
         if disconnected_flag:
             try:
                 print('Reconnecting to server...')
-                send_greeting(client_id_str)
+                # send_greeting(client_id_str)
                 disconnected_flag = False
             except Exception:
                 print('Cannot connect to server!')
