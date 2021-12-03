@@ -10,7 +10,6 @@ SOCKET_PORT = 0
 #===================UDP start=========================
 UDP_BUFFER_SIZE = 1024
 TIMEOUT = 20
-DOWNLOAD_PROGRESS = 0
 STATUS_OK = 'OK'
 STATUS_NO_FILE = 'NO FILE'
 UDP_DATAGRAMS_AMOUNT = 5
@@ -282,50 +281,52 @@ def handle_input_request(request):
     if len(data) == 2:
         params = data[1]
 
-    # try:
-    if command == "echo":
-        datagram_count_in = 0
-        datagram_count_out = 0
-        server_address = server_echo_addr
-        send_data(server_echo_addr, request)
-        echo(server_echo_addr, len(params) + 5)
+    try:
+        if command == "echo":
+            datagram_count_in = 0
+            datagram_count_out = 0
+            server_address = server_echo_addr
+            send_data(server_echo_addr, request)
+            print(get_data(server_echo_addr, len(params) + 5)[0])
+            # echo(server_echo_addr, len(params) + 5)
 
-    elif command == "time":
-        datagram_count_in = 0
-        datagram_count_out = 0
-        server_address = server_time_addr
-        send_data(server_time_addr, request)
-        get_time(server_time_addr)
+        elif command == "time":
+            datagram_count_in = 0
+            datagram_count_out = 0
+            server_address = server_time_addr
+            send_data(server_time_addr, request)
+            print('Time:', get_data(addr, 26)[0])
+            # get_time(server_time_addr)
 
-    elif command == "download":
-        datagram_count_in = 0
-        datagram_count_out = 0
-        server_address = server_download_addr
-        send_data(server_download_addr, request)
-        download(params, request)
+        elif command == "download":
+            datagram_count_in = 0
+            datagram_count_out = 0
+            server_address = server_download_addr
+            send_data(server_download_addr, request)
+            download(params, request)
 
-    elif command == "upload":
-        datagram_count_in = 0
-        datagram_count_out = 0
-        server_address = server_upload_addr
-        send_data(server_upload_addr, request)
-        upload(params)
+        elif command == "upload":
+            datagram_count_in = 0
+            datagram_count_out = 0
+            server_address = server_upload_addr
+            send_data(server_upload_addr, request)
+            upload(params)
 
-    elif command == "help":
-        print("help - to see list of commands\n\
-                exit - to quit\n\
-                echo - to resend message to a client\n\
-                upload - to upload file on the server\n\
-                download - to download file from a server\n\
-                time - get server time\
-                ")
+        elif command == "help":
+            print("help - to see list of commands\n\
+                    exit - to quit\n\
+                    echo - to resend message to a client\n\
+                    upload - to upload file on the server\n\
+                    download - to download file from a server\n\
+                    time - get server time\
+                    ")
 
-    elif command == "exit":
-        client.close()
-        exit(0)
-    # except Exception as e:
-    #     print('Cannot process the command. Please, try again')
-    #     print(e)
+        elif command == "exit":
+            client.close()
+            exit(0)
+    except Exception as e:
+        print('Cannot process the command. Please, try again')
+        print(e)
 
 
 def echo(addr, l):
@@ -340,6 +341,9 @@ def upload(file_name):
     global server_upload_addr
     global disconnected_flag
     global server_upload_addr
+
+    print('=upload=')
+
     f = open(file_name, "rb+")
 
     get_data(server_upload_addr, UDP_BUFFER_SIZE)[0]
@@ -350,11 +354,9 @@ def upload(file_name):
     print("File size: ", size)
     send_data(server_upload_addr ,size)
 
-    # get_data(server_upload_addr, UDP_BUFFER_SIZE)[0]
     data_size_recv = int(get_data(server_upload_addr, UDP_BUFFER_SIZE)[0])
 
     f.seek(data_size_recv, 0)
-    current_pos = data_size_recv
 
     progress = tqdm.tqdm(range(int(size)), f"Progress of {file_name}:", unit="B", unit_scale=True,
                         unit_divisor=1024)
@@ -362,34 +364,28 @@ def upload(file_name):
     progress.update(total_size)
     while (1):
         try:
-            if 1:
-                data_file = f.read(UDP_BUFFER_SIZE * UDP_DATAGRAMS_AMOUNT)
-                # server.sendto(data_file, addr)
-                udp_send(data_file, server_upload_addr, UDP_BUFFER_SIZE, UDP_DATAGRAMS_AMOUNT)
-                
-                current_pos = current_pos + UDP_BUFFER_SIZE * UDP_DATAGRAMS_AMOUNT
-                f.seek(current_pos)
-                total_size+=len(data_file)
-                progress.update(len(data_file))
-                # print(total_size)
-                if total_size == size:
-                    break
+            data_file = f.read(UDP_BUFFER_SIZE * UDP_DATAGRAMS_AMOUNT)
+            udp_send(data_file, server_upload_addr, UDP_BUFFER_SIZE, UDP_DATAGRAMS_AMOUNT)
+            
+            total_size+=len(data_file)
+            progress.update(len(data_file))
+            if total_size == size:
+                break
         except Exception:
             disconnected_flag = True
             print('Disconnected from server!')
             break
 
     progress.close()
-    print("END")
+    print("End of upload")
     if(total_size == size):
-        print("All")
+        print(f'File [{file_name}] was sent completely')
     f.close()
 
 
 def download(file_name, request):
     global disconnected_flag
     global client_id_str
-    global DOWNLOAD_PROGRESS # ?
     global server_download_addr
 
     if get_data(server_download_addr, UDP_BUFFER_SIZE)[0] != STATUS_OK:
@@ -402,67 +398,54 @@ def download(file_name, request):
         total_size = 0
         print("size = ", size)
         # print(size)
-        send_data(server_download_addr, DOWNLOAD_PROGRESS)
+        send_data(server_download_addr, 0)
     except Exception as e:
         print('Cannot get information about the file. Please, try again')
         print(e)
         return
 
     file_name = os.path.basename(file_name)
-    if (DOWNLOAD_PROGRESS == 0):
-        f = open(file_name, "wb")
-    else:
-        f = open(file_name, "rb+")
 
-    current_pos = DOWNLOAD_PROGRESS
+    f = open(file_name, "wb")
+
     print("=====================")
 
     progress = tqdm.tqdm(range(int(size)), f"Progress of {file_name}:", unit="B", unit_scale=True,
                          unit_divisor=1024)
     progress.update(total_size)
-    i = 0
     while (1):
         try:
             data, address, a = udp_recv(server_download_addr, UDP_BUFFER_SIZE + 10, 10.0, UDP_DATAGRAMS_AMOUNT)
-            if data:
-                if 1:
-                    i += 1
-                    f.seek(current_pos, 0)
-                    f.write(data)
-                    # print(len(data))
-                    current_pos += len(data)
+            if data:                
+                f.write(data)
+
                 total_size+=len(data)
-                # print('upd')
                 progress.update(len(data))
-                # print(total_size)
                 if total_size == size:
                     break
             else:
                 print("Server disconnected")
                 return
-            i += 1
         except Exception as e:        
             disconnected_flag = True
             print('Disconnected from server!')
             print(e)
             # exit(0)
             break
+
     progress.close()
-    print("END")
+    print("End of upload")
     if size == total_size:
-        print("\n" + file_name + " was downloaded")
+        print(f'File [{file_name}] was received completely')
     f.close()
 
 
 def send_greeting(client_id):
     global server_address
-    # print(client_id)
-    # print(str(client_id))
     udp_send(('connect ' + str(client_id)).encode('utf-8'), server_address, UDP_BUFFER_SIZE, 1, True)
 
 
-#===================UDP END ==========================
-
+########################################### MAIN ###########################################
 is_valid_address = False
 # default_addr = '192.168.1.2'
 default_addr = '127.0.0.1'
