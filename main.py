@@ -1,20 +1,16 @@
-import builtins
-from ctypes import sizeof
 import os
 import socket
 import tqdm
 import regex
 import random
 import re
-import time
 
-SOCKET_PORT = 50018
+SOCKET_PORT = 0
 
 #===================UDP start=========================
 UDP_BUFFER_SIZE = 1024
 TIMEOUT = 20
 DOWNLOAD_PROGRESS = 0
-# OK_STATUS = 200
 STATUS_OK = 'OK'
 STATUS_NO_FILE = 'NO FILE'
 UDP_DATAGRAMS_AMOUNT = 5
@@ -255,12 +251,14 @@ def udp_recv(server_addr, bytes_amount, timeout, datagrams_amount):
          
     return data, addr, exc_flag
 
+
 def get_data(addr, ll):
     print('>Receiving information')
     data, address, a = udp_recv(addr, ll + 10, 10, 1)
     print('>Information received ', data)
     data = data.decode('utf-8')
     return [data, address]
+
 
 def send_data(addr, data):
     # global server_address
@@ -329,8 +327,10 @@ def handle_input_request(request):
     #     print('Cannot process the command. Please, try again')
     #     print(e)
 
+
 def echo(addr, l):
     print(get_data(addr, l)[0])
+
 
 def get_time(addr):
     print('Time:', get_data(addr, 26)[0])
@@ -463,84 +463,60 @@ def send_greeting(client_id):
 
 #===================UDP END ==========================
 
+is_valid_address = False
+# default_addr = '192.168.1.2'
+default_addr = '127.0.0.1'
 
-print("1 - UDP Client\n2 - TCP Client")
+REGULAR_IP = '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
+regex = re.compile(REGULAR_IP)
 
-# num = int(input("Введите число: "))
-num = 0
-while(1):
-    num = input('Enter the number: ')
-    try:
-        num = int(num)
-        if num == 1 or num == 2:
-            break
-    except ValueError:
-        pass
-    print('Check your input!')   
-
-
-if num == 2:
-    try:
-        main()
-    except Exception as e:
-        print('Server unavailable')
-        print(e)
-elif num == 1:
-
-    is_valid_address = False
-    # default_addr = '192.168.1.2'
-    default_addr = '127.0.0.1'
-
-    REGULAR_IP = '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
-    regex = re.compile(REGULAR_IP)
-
-    while is_valid_address == False:
-        addr = input(f"\nInput host address [{default_addr} is default]: ")
-        if not addr:
-            addr = default_addr
-        if (regex.match(addr)):
+while is_valid_address == False:
+    addr = input(f"\nInput host address [{default_addr} is default]: ")
+    if not addr:
+        addr = default_addr
+    if (regex.match(addr)):
+        is_valid_address = True
+        HOST = addr
+    else:
+        try:
+            HOST = socket.gethostbyname(addr)
             is_valid_address = True
-            HOST = addr
-        else:
-            try:
-                HOST = socket.gethostbyname(addr)
-                is_valid_address = True
-            except socket.error:
-                print("Please, input valid address")
-                is_valid_address = False
+        except socket.error:
+            print("Please, input valid address")
+            is_valid_address = False
 
-    server_download_addr = (addr, DOWNLOAD_SERVICE_PORT)
-    server_upload_addr = (addr, UPLOAD_SERVICE_PORT)
-    server_echo_addr = (addr, ECHO_SERVICE_PORT)
-    server_time_addr = (addr, TIME_SERVICE_PORT)
+server_download_addr = (addr, DOWNLOAD_SERVICE_PORT)
+server_upload_addr = (addr, UPLOAD_SERVICE_PORT)
+server_echo_addr = (addr, ECHO_SERVICE_PORT)
+server_time_addr = (addr, TIME_SERVICE_PORT)
 
-    client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
-    client_id = random.randint(0, 65535)
-    print('ID:', client_id)
-    # client_id_str = bytes(client_id)
-    client_id_str = client_id
+client_id = random.randint(0, 65535)
+print('ID:', client_id)
+# client_id_str = bytes(client_id)
+client_id_str = client_id
 
-    # try:
-    #     send_greeting(client_id_str)
-    # except Exception:
-    #     print('Cannot connect to server!')
-    #     exit(0)
-    while True:
-        if disconnected_flag:
-            try:
-                print('Reconnecting to server...')
-                # send_greeting(client_id_str)
-                disconnected_flag = False
-            except Exception:
-                print('Cannot connect to server!')
-                exit(0)
-        request = input('<< ')
-        if not request:
-            continue
-        command, *params = request.split(' ')
-        if command != 'upload' and command != 'download' and command != 'echo' and command != 'exit' and command != 'help' and command != 'time':
-            print('Unknowm command. Please, try again')
-            continue
-        handle_input_request(request)
+# try:
+#     send_greeting(client_id_str)
+# except Exception:
+#     print('Cannot connect to server!')
+#     exit(0)
+while True:
+    if disconnected_flag:
+        try:
+            print('Reconnecting to server...')
+            # send_greeting(client_id_str)
+            disconnected_flag = False
+        except Exception:
+            print('Cannot connect to server!')
+            exit(0)
+    request = input('<< ')
+    if not request:
+        continue
+    command, *params = request.split(' ')
+    if command != 'upload' and command != 'download' and command != 'echo' and command != 'exit' and command != 'help' and command != 'time':
+        print('Unknowm command. Please, try again')
+        continue
+    handle_input_request(request)
