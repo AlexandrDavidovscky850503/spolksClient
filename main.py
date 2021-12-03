@@ -249,7 +249,7 @@ def udp_recv(server_addr, bytes_amount, timeout, datagrams_amount):
             server_address[1] = dunamic_sock_num
             # print('aaaaa5', server_address)
             server_address = tuple(server_address)
-            # print('aaaaa3', server_address)
+            print('aaaaa3', server_address)
             client.sendto(str.encode(temp), server_address)
             continue
          
@@ -284,49 +284,50 @@ def handle_input_request(request):
     if len(data) == 2:
         params = data[1]
 
-    try:
-        if command == "echo":
-            datagram_count_in = 0
-            datagram_count_out = 0
-            server_address = server_echo_addr
-            send_data(server_echo_addr, request)
-            echo(server_echo_addr, len(params) + 5)
+    # try:
+    if command == "echo":
+        datagram_count_in = 0
+        datagram_count_out = 0
+        server_address = server_echo_addr
+        send_data(server_echo_addr, request)
+        echo(server_echo_addr, len(params) + 5)
 
-        elif command == "time":
-            datagram_count_in = 0
-            datagram_count_out = 0
-            server_address = server_time_addr
-            send_data(server_time_addr, request)
-            get_time(server_time_addr)
+    elif command == "time":
+        datagram_count_in = 0
+        datagram_count_out = 0
+        server_address = server_time_addr
+        send_data(server_time_addr, request)
+        get_time(server_time_addr)
 
-        elif command == "download":
-            datagram_count_in = 0
-            datagram_count_out = 0
-            server_address = server_download_addr
-            send_data(server_download_addr, request)
-            download(params, request)
+    elif command == "download":
+        datagram_count_in = 0
+        datagram_count_out = 0
+        server_address = server_download_addr
+        send_data(server_download_addr, request)
+        download(params, request)
 
-        elif command == "upload":
-            datagram_count_in = 0
-            datagram_count_out = 0
-            send_data(server_upload_addr, request)
-            upload(params)
+    elif command == "upload":
+        datagram_count_in = 0
+        datagram_count_out = 0
+        server_address = server_upload_addr
+        send_data(server_upload_addr, request)
+        upload(params)
 
-        elif command == "help":
-            print("help - to see list of commands\n\
-                    exit - to quit\n\
-                    echo - to resend message to a client\n\
-                    upload - to upload file on the server\n\
-                    download - to download file from a server\n\
-                    time - get server time\
-                    ")
+    elif command == "help":
+        print("help - to see list of commands\n\
+                exit - to quit\n\
+                echo - to resend message to a client\n\
+                upload - to upload file on the server\n\
+                download - to download file from a server\n\
+                time - get server time\
+                ")
 
-        elif command == "exit":
-            client.close()
-            exit(0)
-    except Exception as e:
-        print('Cannot process the command. Please, try again')
-        print(e)
+    elif command == "exit":
+        client.close()
+        exit(0)
+    # except Exception as e:
+    #     print('Cannot process the command. Please, try again')
+    #     print(e)
 
 def echo(addr, l):
     print(get_data(addr, l)[0])
@@ -338,20 +339,22 @@ def get_time(addr):
 def upload(file_name):
     global server_upload_addr
     global disconnected_flag
+    global server_upload_addr
     f = open(file_name, "rb+")
+
+    get_data(server_upload_addr, UDP_BUFFER_SIZE)[0]
 
     size = int(os.path.getsize(file_name))
     total_size=0
 
+    print("File size: ", size)
+    send_data(server_upload_addr ,size)
+
+    # get_data(server_upload_addr, UDP_BUFFER_SIZE)[0]
     data_size_recv = int(get_data(server_upload_addr, UDP_BUFFER_SIZE)[0])
 
     f.seek(data_size_recv, 0)
     current_pos = data_size_recv
-
-    print("File size: ", size)
-    send_data(server_upload_addr ,size)
-
-    get_data(server_upload_addr, UDP_BUFFER_SIZE)[0]
 
     progress = tqdm.tqdm(range(int(size)), f"Progress of {file_name}:", unit="B", unit_scale=True,
                         unit_divisor=1024)
